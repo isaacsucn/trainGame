@@ -1,0 +1,1901 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<link rel="icon" href="data:,">
+<title>高铁驾驶模拟器 · 云川—海州</title>
+<style>
+  html,body{margin:0;padding:0;height:100%;overflow:hidden;background:#07090c;
+    font-family:"Microsoft YaHei","PingFang SC",system-ui,sans-serif;user-select:none;
+    -webkit-user-select:none;color:#e8f0f6}
+  #view{position:absolute;inset:0;display:block}
+  .hud{position:absolute;text-shadow:0 1px 3px rgba(0,0,0,.7)}
+  .panel{background:rgba(8,12,17,.62);border:1px solid rgba(140,180,220,.16);
+    border-radius:10px;backdrop-filter:blur(5px);box-shadow:0 2px 10px rgba(0,0,0,.35)}
+  /* top bar */
+  #topbar{top:10px;left:10px;right:10px;display:flex;gap:10px;align-items:stretch;
+    pointer-events:none;height:64px}
+  #topbar .panel{pointer-events:auto}
+  #infoBox{padding:8px 14px;min-width:220px;display:flex;flex-direction:column;justify-content:center}
+  #clock{font-size:22px;font-weight:700;letter-spacing:1px;color:#7fd7ff}
+  #sched{font-size:12px;color:#ffd27f;margin-top:2px}
+  #profileWrap{flex:1;padding:6px 10px;display:flex;flex-direction:column;min-width:0}
+  #profile{flex:1;width:100%}
+  #scoreBox{padding:8px 16px;min-width:130px;text-align:right;display:flex;
+    flex-direction:column;justify-content:center}
+  #viewPanel{width:150px;padding:5px 8px;display:flex;flex-direction:column;gap:4px;
+    justify-content:center}
+  .vhead{font-size:11px;color:#7d93a8;display:flex;justify-content:space-between;letter-spacing:1px}
+  #viewChips{display:grid;grid-template-columns:1fr 1fr;gap:4px}
+  .vchip{background:#1a222b;border:1px solid #2c3947;border-radius:5px;color:#7d93a8;
+    font-size:11px;padding:2px 0;cursor:pointer;font-family:inherit;line-height:1.35}
+  .vchip:hover{background:#243140}
+  .vchip.on{background:#0d3d55;border-color:#4db2ef;color:#cdeaff;font-weight:700}
+  #score{font-size:24px;font-weight:800;color:#9dff9d}
+  #energy{font-size:11px;color:#9fb6c9}
+  #rankMini{font-size:11px;color:#ffd27f;margin-top:2px}
+  /* messages */
+  #msg{top:86px;left:50%;transform:translateX(-50%);text-align:center;pointer-events:none;
+    display:flex;flex-direction:column;gap:4px;align-items:center;max-width:80vw}
+  .msgItem{background:rgba(10,16,22,.78);border:1px solid rgba(140,190,255,.25);
+    padding:5px 18px;border-radius:16px;font-size:15px;color:#dff0ff;white-space:nowrap}
+  .msgWarn{border-color:rgba(255,120,80,.6);color:#ffb59d}
+  .msgGood{border-color:rgba(120,255,140,.5);color:#b6ffc0}
+  /* dash area */
+  #dash{left:0;right:0;bottom:0;height:212px;pointer-events:none;display:flex;
+    align-items:flex-end;justify-content:space-between;padding:0 12px 10px;gap:10px}
+  #dash .panel{pointer-events:auto}
+  #spdPanel{width:236px;height:202px;position:relative}
+  #spdCanvas{position:absolute;left:8px;top:6px}
+  #spdDig{position:absolute;left:0;right:0;bottom:8px;text-align:center}
+  #spdVal{font-size:34px;font-weight:800;color:#fff;line-height:1}
+  #spdUnit{font-size:11px;color:#9fb6c9}
+  #limitBadge{position:absolute;right:10px;top:10px;background:#123;color:#7fd7ff;
+    border:1px solid rgba(127,215,255,.4);border-radius:8px;padding:3px 8px;font-size:13px;font-weight:700}
+  /* center console */
+  #midPanel{flex:1;max-width:520px;height:202px;padding:10px 12px;display:flex;
+    flex-direction:column;gap:8px}
+  #notchRow{display:flex;align-items:center;gap:8px;justify-content:center}
+  #notchLabel{font-size:12px;color:#9fb6c9;width:44px;text-align:right}
+  #notchBar{display:flex;gap:3px}
+  .nseg{width:26px;height:22px;border-radius:4px;background:#1a222b;border:1px solid #2c3947;
+    display:flex;align-items:center;justify-content:center;font-size:11px;color:#5c7082}
+  .nseg.onP{background:#0e5c2c;border-color:#35d465;color:#c8ffd4}
+  .nseg.onB{background:#6b4a08;border-color:#ffb02e;color:#ffe6b8}
+  .nseg.onEB{background:#a01212;border-color:#ff5040;color:#fff;animation:blink .5s infinite alternate}
+  .nseg.onN{background:#2c3947;color:#cfe0ee}
+  @keyframes blink{from{filter:brightness(.7)}to{filter:brightness(1.5)}}
+  #lampRow{display:flex;gap:8px;justify-content:center;font-size:11px}
+  .lamp{padding:2px 10px;border-radius:10px;background:#1a222b;border:1px solid #2c3947;color:#5c7082}
+  .lamp.on{background:#5c1010;border-color:#ff5040;color:#ffd9d4}
+  .lamp.onG{background:#0e5c2c;border-color:#35d465;color:#c8ffd4}
+  .lamp.muteBtn{cursor:pointer;font-family:inherit}
+  .lamp.muteBtn.muted{background:#2a1414;border-color:#8a3a3a;color:#ffb59d}
+  #btnGrid{display:grid;grid-template-columns:repeat(5,1fr);gap:6px;flex:1}
+  .btn{background:linear-gradient(180deg,#26313d,#171f28);border:1px solid #3a4c5e;
+    border-radius:8px;color:#dce8f2;font-size:14px;font-weight:600;cursor:pointer;
+    display:flex;flex-direction:column;align-items:center;justify-content:center;gap:1px}
+  .btn small{font-size:10px;color:#7d93a8;font-weight:400}
+  .btn:hover{background:linear-gradient(180deg,#31404f,#1e2936)}
+  .btn:active{transform:translateY(1px)}
+  .btn.warn{border-color:#a05038}
+  /* right ATP */
+  #atpPanel{width:252px;height:202px;padding:10px 14px;display:flex;flex-direction:column;gap:6px}
+  .atpRow{display:flex;justify-content:space-between;align-items:center;font-size:13px;color:#9fb6c9}
+  .atpRow b{color:#e8f0f6;font-size:15px}
+  #atpSigLamp{width:22px;height:22px;border-radius:50%;border:2px solid #222;display:inline-block;
+    vertical-align:middle;box-shadow:0 0 8px rgba(0,0,0,.6)}
+  #atpAdvice{text-align:center;font-weight:800;font-size:16px;padding:4px;border-radius:6px;min-height:22px}
+  #atpAdvice.brake{background:#5c1010;color:#ffd9d4;animation:blink .4s infinite alternate}
+  #atpAdvice.advise{background:#4a3a08;color:#ffe6b8}
+  /* overlay */
+  #overlay{position:absolute;inset:0;background:rgba(4,7,10,.82);display:flex;
+    align-items:center;justify-content:center;z-index:50}
+  #ovCard{background:linear-gradient(160deg,#101821,#0a0f15);border:1px solid rgba(140,190,255,.22);
+    border-radius:14px;padding:28px 34px;max-width:640px;width:88vw;max-height:86vh;overflow:auto;
+    box-shadow:0 10px 60px rgba(0,0,0,.7)}
+  #ovTitle{font-size:26px;font-weight:800;color:#7fd7ff;margin-bottom:4px;text-align:center}
+  #ovSub{text-align:center;color:#9fb6c9;font-size:13px;margin-bottom:16px}
+  #ovBody{font-size:14px;line-height:1.75;color:#cfdbe6}
+  #ovBody table{width:100%;border-collapse:collapse;margin:8px 0;font-size:13px}
+  #ovBody td,#ovBody th{border:1px solid #2c3947;padding:4px 8px;text-align:left}
+  #ovBody th{background:#16202a;color:#7fd7ff}
+  .kbd{display:inline-block;background:#1c2630;border:1px solid #3a4c5e;border-bottom-width:3px;
+    border-radius:5px;padding:0 7px;font-size:12px;color:#cfe0ee;margin:0 2px;font-family:monospace}
+  #ovBtn{display:block;margin:18px auto 0;background:linear-gradient(180deg,#1d6fa8,#155a88);
+    border:1px solid #4db2ef;color:#fff;font-size:17px;font-weight:700;padding:11px 46px;
+    border-radius:10px;cursor:pointer;letter-spacing:4px}
+  #ovBtn:hover{filter:brightness(1.15)}
+  .gradeS{color:#ffd24d}.gradeA{color:#9dff9d}.gradeB{color:#7fd7ff}.gradeC{color:#ffb02e}.gradeD{color:#ff5040}
+  #pauseHint{position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);font-size:26px;
+    font-weight:800;color:#fff;background:rgba(0,0,0,.6);padding:14px 40px;border-radius:12px;display:none;z-index:40}
+  /* 难度 / 段位 */
+  #diffPick{margin-top:14px;border-top:1px solid #223040;padding-top:12px}
+  .dpLabel{display:flex;justify-content:space-between;align-items:baseline;
+    font-size:13px;color:#9fb6c9;margin-bottom:8px}
+  #rankInfo{font-size:12px;color:#ffd27f}
+  #diffChips{display:grid;grid-template-columns:repeat(3,1fr);gap:8px}
+  .dchip{background:#18222c;border:1px solid #2c3947;border-radius:8px;color:#a8bccf;
+    padding:7px 6px;cursor:pointer;font-family:inherit;font-size:14px;font-weight:700;line-height:1.35}
+  .dchip small{display:block;font-weight:400;font-size:11px;color:#6f8498;margin-top:2px}
+  .dchip:hover{background:#202c38}
+  .dchip.on{background:#0d3d55;border-color:#4db2ef;color:#cdeaff}
+  .dchip.on small{color:#8fc8e8}
+  #wxChips{display:grid;grid-template-columns:repeat(3,1fr);gap:8px}
+  .wchip{padding:5px 4px;font-size:13px}
+  #bestInfo{font-size:12px;color:#7d93a8;margin-top:8px}
+  .rankBox{background:#0e161e;border:1px solid #223040;border-radius:8px;padding:10px 12px;margin-top:10px}
+  .rrow{display:flex;justify-content:space-between;font-size:13px;color:#9fb6c9;margin:2px 0}
+  .rrow b{color:#e8f0f6}
+  .rrow.small{font-size:11px;color:#7d93a8}
+  .rbar{height:7px;background:#1a222b;border-radius:4px;overflow:hidden;margin:6px 0}
+  .rbar i{display:block;height:100%;background:linear-gradient(90deg,#2b7fbf,#7fd7ff);border-radius:4px}
+  .promo{text-align:center;color:#ffd24d;font-weight:800;margin-top:6px;font-size:14px}
+</style>
+</head>
+<body>
+<canvas id="view"></canvas>
+
+<div id="topbar" class="hud">
+  <div id="infoBox" class="panel">
+    <div id="clock">00:00</div>
+    <div id="sched">—</div>
+  </div>
+  <div id="profileWrap" class="panel"><canvas id="profile"></canvas></div>
+  <div id="viewPanel" class="panel">
+    <div class="vhead"><span>视角</span><span>V / C</span></div>
+    <div id="viewChips">
+      <button class="vchip on" data-i="0">驾驶室</button>
+      <button class="vchip" data-i="1">车头</button>
+      <button class="vchip" data-i="2">车顶</button>
+      <button class="vchip" data-i="3">侧前方</button>
+    </div>
+  </div>
+  <div id="scoreBox" class="panel">
+    <div id="score">100</div>
+    <div id="energy">能耗 0 kWh</div>
+    <div id="rankMini">中级 · 学员</div>
+  </div>
+</div>
+
+<div id="msg" class="hud"></div>
+
+<div id="dash" class="hud">
+  <div id="spdPanel" class="panel">
+    <canvas id="spdCanvas" width="220" height="150"></canvas>
+    <div id="limitBadge">限速 <span id="limitVal">120</span></div>
+    <div id="spdDig"><span id="spdVal">0</span> <span id="spdUnit">km/h</span></div>
+  </div>
+  <div id="midPanel" class="panel">
+    <div id="notchRow">
+      <div id="notchLabel">手柄</div>
+      <div id="notchBar"></div>
+    </div>
+    <div id="lampRow">
+      <span class="lamp" id="lampEB">紧急制动</span>
+      <span class="lamp" id="lampATP">ATP防护</span>
+      <span class="lamp" id="lampRev">倒车</span>
+      <span class="lamp" id="lampDoor">车门开启</span>
+      <button class="lamp muteBtn" id="bConfirm" title="确认发车（Y）">确认发车 Y</button>
+      <button class="lamp muteBtn" id="bMute" title="静音 / 恢复（M）">音效 开</button>
+      <button class="lamp muteBtn" id="bHaptic" title="震动反馈开关（N）">震动 开</button>
+    </div>
+    <div id="btnGrid">
+      <button class="btn" id="bTplus">牵引＋<small>W / ↑</small></button>
+      <button class="btn" id="bTminus">牵引－<small>S / ↓</small></button>
+      <button class="btn" id="bBplus">制动＋<small>D / →</small></button>
+      <button class="btn" id="bBminus">制动－<small>A / ←</small></button>
+      <button class="btn" id="bDoor">车门<small>G / Enter</small></button>
+      <button class="btn warn" id="bEB">紧急制动<small>Space</small></button>
+      <button class="btn" id="bHorn">鸣笛<small>H</small></button>
+      <button class="btn" id="bRev">倒车<small>R</small></button>
+      <button class="btn" id="bPause">暂停<small>P</small></button>
+      <button class="btn" id="bRestart">重新开始<small>F5</small></button>
+    </div>
+  </div>
+  <div id="atpPanel" class="panel">
+    <div class="atpRow"><span>前方信号</span><span><span id="atpSigLamp"></span> <b id="atpSigTxt">—</b></span></div>
+    <div class="atpRow"><span>目标</span><b id="atpTarget">—</b></div>
+    <div class="atpRow"><span>距离</span><b id="atpDist">—</b></div>
+    <div class="atpRow"><span>下一站</span><b id="atpNext">—</b></div>
+    <div class="atpRow"><span>ATP 模式</span><b><span id="atpMode">CM</span> · <span id="atpWx">晴天</span></b></div>
+    <div id="atpAdvice"></div>
+  </div>
+</div>
+
+<div id="pauseHint">已暂停 · 按 P 继续</div>
+
+<div id="overlay">
+  <div id="ovCard">
+    <div id="ovTitle">高铁驾驶模拟器</div>
+    <div id="ovSub">云川站 → 临江站 → 海州站 · 全程 44 km · CR400 动车组</div>
+    <div id="ovBody">
+      <table>
+        <tr><th>操作</th><th>按键</th><th>说明</th></tr>
+        <tr><td>牵引加/减</td><td><span class="kbd">W</span><span class="kbd">S</span> 或 <span class="kbd">↑</span><span class="kbd">↓</span></td><td>P0–P4 四级牵引</td></tr>
+        <tr><td>制动加/减</td><td><span class="kbd">D</span><span class="kbd">A</span> 或 <span class="kbd">→</span><span class="kbd">←</span></td><td>B0–B7 七级制动</td></tr>
+        <tr><td>紧急制动</td><td><span class="kbd">Space</span></td><td>停车后自动缓解</td></tr>
+        <tr><td>开关车门</td><td><span class="kbd">G</span> / <span class="kbd">Enter</span></td><td>对标停稳后操作</td></tr>
+        <tr><td>鸣笛 / 倒车 / 暂停</td><td><span class="kbd">H</span> / <span class="kbd">R</span> / <span class="kbd">P</span></td><td>过标可倒车微调</td></tr>
+        <tr><td>视角切换</td><td><span class="kbd">V</span> / <span class="kbd">C</span></td><td>驾驶室 → 车头 → 车顶 → 侧前方 循环</td></tr>
+        <tr><td>时段切换</td><td><span class="kbd">T</span></td><td>夜间 → 黄昏 → 白天 循环</td></tr>
+        <tr><td>音效开关</td><td><span class="kbd">M</span></td><td>静音 / 恢复环境声与警报</td></tr>
+        <tr><td>震动反馈</td><td><span class="kbd">N</span></td><td>开关触觉振动（移动设备支持时）</td></tr>
+        <tr><td>确认发车</td><td><span class="kbd">Y</span></td><td>关门后、到点后确认，方可牵引</td></tr>
+      </table>
+      <b>任务要点：</b><br>
+      · 按时刻表运行（以下为中级基准，难度会放宽或收紧）：云川 00:45 发车，临江 05:30 到 / 06:00 发，海州 14:40 前到达。<br>
+      · 遵守线路限速与信号机显示，<span style="color:#ff8a70">冒进红灯立即终止</span>。<br>
+      · 乘降作业需满 20 秒方可关门；关门后按 <span class="kbd">Y</span> 确认发车，到点且信号开放才能牵引。<br>
+      · 天气影响瞭望与轮轨粘着：小雨粘着下降、大雾能见度低，均会改变制动与起步手感。<br>
+      · 按 <span class="kbd">T</span> 切换夜间/黄昏/白天，默认按时刻表以夜间行车，注意灯光与站台照明。<br>
+      · 站台停车窗内可开门（初级 ±8 m / 中级 ±5 m / 高级 ±4 m），对标误差越小扣分越少；过标可按 <span class="kbd">R</span> 倒车微调。<br>
+      · 综合评分：对标精度、准点率、超速、舒适度（冲动）、能耗；按难度获得驾驶资历并晋升段位。
+    </div>
+    <div id="diffPick">
+      <div class="dpLabel"><span>难度等级</span><span id="rankInfo">学员 · 资历 0</span></div>
+      <div id="diffChips">
+        <button class="dchip" data-d="0">初级<small>时刻宽松 · 容差大</small></button>
+        <button class="dchip on" data-d="1">中级<small>标准时刻 · 标准容差</small></button>
+        <button class="dchip" data-d="2">高级<small>时刻紧 · 容差严格</small></button>
+      </div>
+      <div class="dpLabel" style="margin-top:10px"><span>天气</span><span id="wxNote">干燥 · 粘着良好</span></div>
+      <div id="wxChips">
+        <button class="dchip wchip on" data-w="0">晴天</button>
+        <button class="dchip wchip" data-w="1">小雨</button>
+        <button class="dchip wchip" data-w="2">大雾</button>
+      </div>
+      <div id="bestInfo">历史最佳：—</div>
+    </div>
+    <button id="ovBtn">开始驾驶</button>
+  </div>
+</div>
+
+<script>
+'use strict';
+/* ================= 常量与工具 ================= */
+const rnd01=n=>{const x=Math.sin(n*127.1+311.7)*43758.5453;return x-Math.floor(x);};
+const clamp=(v,a,b)=>v<a?a:v>b?b:v;
+const lerp=(a,b,t)=>a+(b-a)*t;
+function mulberry32(seed){return function(){let t=seed+=0x6D2B79F5;t=Math.imul(t^t>>>15,t|1);
+  t^=t+Math.imul(t^t>>>7,t|61);return((t^t>>>14)>>>0)/4294967296;}}
+function mix(c1,c2,t){return[lerp(c1[0],c2[0],t)|0,lerp(c1[1],c2[1],t)|0,lerp(c1[2],c2[2],t)|0];}
+let AMB=[1,1,1];          // 环境光倍率（时段/天气）
+const rgb=c=>`rgb(${Math.min(255,(c[0]*AMB[0])|0)},${Math.min(255,(c[1]*AMB[1])|0)},${Math.min(255,(c[2]*AMB[2])|0)})`;
+const rgbRaw=c=>`rgb(${c[0]},${c[1]},${c[2]})`;
+
+/* ================= 线路数据 ================= */
+const ROUTE_LEN=44000, SEG_LEN=50, NSEG=Math.ceil(ROUTE_LEN/SEG_LEN);
+const DRAW_M=3000, DRAW_N=DRAW_M/SEG_LEN;      // 渲染距离
+const BLOCK=1500;                               // 闭塞分区长度
+const ROAD_HALF=4.2;
+/* 视角参数：h=视点高度(m)，lat=横向偏移(m)，fov=视场角，hor=地平线屏幕比例，cab=是否绘制驾驶台 */
+const CAMS=[
+  {name:'驾驶室', h:3.8, lat:0,   fovH:1.02, fovV:0.60, hor:0.40, cab:true},
+  {name:'车头',   h:2.6, lat:0,   fovH:1.18, fovV:0.68, hor:0.42, cab:false},
+  {name:'车顶',   h:7.5, lat:0,   fovH:1.02, fovV:0.62, hor:0.48, cab:false},
+  {name:'侧前方', h:3.0, lat:3.6, fovH:1.05, fovV:0.60, hor:0.44, cab:false},
+];
+
+const LIMITS=[[0,120],[1000,200],[3000,300],[19000,350],[25800,200],[30000,350],[41000,250]];
+const GRADES=[[0,5000,0],[5000,10000,8],[10000,14000,-6],[14000,20000,0],
+  [20000,26000,10],[26000,30000,-12],[30000,36000,6],[36000,41000,-8],[41000,44000,0]]; // ‰
+const CURVES=[[6000,8000,3000,1],[11000,13000,2500,-1],[16000,18000,4000,1],
+  [22500,24500,2000,-1],[31000,33000,5000,1],[38000,39500,3000,-1]];  // from,to,R,dir
+const ZONES=[[0,'field'],[12000,'town'],[16000,'hills'],[25800,'work'],[30000,'forest'],
+  [33500,'tunnel'],[35500,'hills'],[39800,'bridge'],[41200,'urban'],[44000,'end']];
+const STATIONS=[
+  {name:'云川站',pos:0,    arr:0,   dep:45},
+  {name:'临江站',pos:14000,arr:330, dep:360},
+  {name:'海州站',pos:44000,arr:880, dep:Infinity}];
+const GRADE_VIS=4; // 坡度视觉夸张系数
+
+/* ================= 难度等级 ================= */
+const DIFF=[
+  {name:'初级', slack:[0,30,60],  win:8,  tol:1.40, warn:3, hard1:14, hard2:7, grace:1.4,
+   jerk:1.20, lateStart:60, lateStep:20, lateCap:6,  eGood:2150, eBad:2900, xpMul:0.85},
+  {name:'中级', slack:[0,0,0],    win:5,  tol:1.00, warn:2, hard1:10, hard2:5, grace:1.2,
+   jerk:0.80, lateStart:30, lateStep:15, lateCap:10, eGood:1950, eBad:2650, xpMul:1.00},
+  {name:'高级', slack:[0,-20,-45],win:4,  tol:0.72, warn:1, hard1:6,  hard2:3, grace:0.8,
+   jerk:0.55, lateStart:15, lateStep:10, lateCap:14, eGood:1800, eBad:2400, xpMul:1.30},
+];
+
+/* ================= 天气 ================= */
+const WEATHER=[
+  {name:'晴天',skyT:[96,158,222],skyH:[214,234,248],fog:[207,227,245],vis:3000,rain:0,adh:1.00},
+  {name:'小雨',skyT:[86,98,112],skyH:[150,162,176],fog:[178,188,198],vis:1700,rain:1,adh:0.62},
+  {name:'大雾',skyT:[170,176,182],skyH:[214,218,222],fog:[226,230,234],vis:900,rain:0,adh:0.80},
+];
+/* ================= 时段（夜间/黄昏/白天） ================= */
+const LOOKS=[
+  {name:'夜间',skyT:[10,16,38],skyH:[30,44,70],fog:[34,44,68],amb:[.52,.56,.70],
+   mtn1:[30,38,58],mtn2:[42,52,76],vis:2400},
+  {name:'黄昏',skyT:[78,68,128],skyH:[247,160,100],fog:[224,172,138],amb:[.90,.83,.82],
+   mtn1:[122,104,132],mtn2:[160,128,144],vis:2800},
+  {name:'白天',skyT:[96,158,222],skyH:[214,234,248],fog:[207,227,245],amb:[1,1,1],
+   mtn1:[150,170,198],mtn2:[182,198,216],vis:3000},
+];
+let TOD=0,FOG_M=3000;
+
+/* ================= 司机段位 ================= */
+const RANKS=[
+  {name:'学员',xp:0},{name:'副司机',xp:200},{name:'司机',xp:500},
+  {name:'高级司机',xp:1000},{name:'指导司机',xp:1800},{name:'金牌司机',xp:3000}];
+const SAVE_KEY='hsr_sim_save_v1';
+let SAVE={diff:1,xp:0,best:[null,null,null],mute:false,haptic:true,weather:0};
+try{
+  const s=JSON.parse(localStorage.getItem(SAVE_KEY)||'null');
+  if(s&&typeof s==='object'){
+    SAVE={diff:clamp(+s.diff||0,0,2),xp:Math.max(0,+s.xp||0),
+      best:[0,1,2].map(i=>(s.best&&typeof s.best[i]==='number')?s.best[i]:null),
+      mute:!!s.mute,haptic:s.haptic!==false,weather:clamp(+s.weather||0,0,2)};
+  }
+}catch(e){}
+function saveGame(){try{localStorage.setItem(SAVE_KEY,JSON.stringify(SAVE));}catch(e){}}
+function rankIndex(xp){let i=0;for(let k=0;k<RANKS.length;k++)if(xp>=RANKS[k].xp)i=k;return i;}
+
+function tableAt(tbl,pos,def){let v=def;for(const e of tbl){if(pos>=e[0])v=e;else break;}
+  return typeof v==='object'?v:v;}
+function limitAt(pos){let l=LIMITS[0][1];for(const e of LIMITS){if(pos>=e[0])l=e[1];else break;}return l;}
+function gradeAt(pos){for(const e of GRADES){if(pos>=e[0]&&pos<e[1])return e[2]/1000;}return 0;}
+function curveAt(pos){for(const e of CURVES){if(pos>=e[0]&&pos<e[1]){
+  const R=e[2],dir=e[3],ramp=220;
+  let k=1;
+  if(pos-e[0]<ramp)k=(pos-e[0])/ramp; else if(e[1]-pos<ramp)k=(e[1]-pos)/ramp;
+  return dir*k/R;}}return 0;}
+function zoneAt(pos){let z='field';for(const e of ZONES){if(pos>=e[0])z=e[1];else break;}return z;}
+
+/* ================= 线路分段（渲染用） ================= */
+const segs=[];
+(function build(){
+  let elev=0;
+  for(let i=0;i<=NSEG+DRAW_N+2;i++){
+    const pos=i*SEG_LEN;
+    segs.push({i,pos,curve:curveAt(pos),grade:gradeAt(pos),y:elev,
+      limit:limitAt(pos),zone:zoneAt(pos),sprites:[]});
+    elev+=gradeAt(pos)*SEG_LEN*GRADE_VIS;
+  }
+  const rnd=s=>{const r=mulberry32(s.i*7919+1013);return r();};
+  for(const s of segs){
+    const r0=mulberry32(s.i*7919+1013);
+    const zone=s.zone;
+    if(zone==='tunnel'||zone==='bridge')continue;
+    let density=0,types=[];
+    if(zone==='field'){density=.5;types=['tree','bush','bush','pine'];}
+    else if(zone==='town'){density=.55;types=['house','tree','house2','bush'];}
+    else if(zone==='hills'){density=.75;types=['pine','tree','pine','bush'];}
+    else if(zone==='forest'){density=.85;types=['pine','pine','tree'];}
+    else if(zone==='work'){density=.5;types=['fence','equip'];}
+    else if(zone==='urban'){density=.8;types=['bld','bld2','bld','tree'];}
+    if(r0()<density){
+      const n=1+(r0()*2|0);
+      for(let k=0;k<n;k++){
+        const side=r0()<.5?-1:1;
+        const t=types[(r0()*types.length)|0];
+        let off;
+        if(t==='bld'||t==='bld2')off=26+r0()*46;
+        else if(t==='house'||t==='house2')off=14+r0()*30;
+        else if(t==='fence')off=6.2;
+        else off=9+r0()*34;
+        s.sprites.push({side,off,type:t,sz:.7+r0()*.8,seed:(r0()*1e9)|0});
+      }
+    }
+  }
+})();
+
+/* ================= 信号机 ================= */
+const SIGS=[];
+for(let p=1500;p<ROUTE_LEN-500;p+=BLOCK)SIGS.push({pos:p,dwarf:false});
+SIGS.push({pos:STATIONS[0].pos+180,dwarf:true,st:0});
+SIGS.push({pos:STATIONS[1].pos+180,dwarf:true,st:1});
+const EOL_POS=44150;      // 尽头线
+const CRASH_POS=44260;
+
+/* ================= 游戏状态 ================= */
+const G={
+  state:'title',          // title|run|pause|fail|finish
+  cam:0,                  // 当前视角索引
+  diff:SAVE.diff,         // 当前难度索引
+  weather:SAVE.weather,   // 当前天气索引
+  t:0, pos:0, v:0,
+  notchP:0, notchB:0, eb:false, ebAuto:false, rev:false,
+  bActual:0,              // 实际制动级（空气制动充风延时）
+  slipT:0, rollT:0,
+  doorsOpen:true,
+  energy:0,               // kWh
+  score:100, deltas:[],   // {label,pts}
+  jerkT:0, comfortLoss:0,
+  osTimer:0, osActive:false, osSince:0,
+  hornT:0, eventPos:null,
+  shake:0,                // 震动/冲击反馈强度
+  eventCleared:false,
+  announced:{},
+  stations:STATIONS.map((s,i)=>({...s,idx:i,arr0:s.arr,dep0:s.dep,
+    status:i===0?'boarding':'pending',
+    err:null,arrActual:null,doorOpenT:i===0?-20:null})),
+  finishAt:null, failReason:'',
+};
+function applyLook(){
+  const L=LOOKS[TOD],w=WEATHER[G.weather];
+  const k=G.weather===0?0:G.weather===1?.62:.50;
+  C.skyT=mix(L.skyT,w.skyT,k);C.skyH=mix(L.skyH,w.skyH,k);
+  C.fog=mix(L.fog,w.fog,k);
+  C.mtn1=mix(L.mtn1,w.fog,k*.40);
+  C.mtn2=mix(L.mtn2,w.fog,k*.32);
+  const dim=G.weather===1?.90:G.weather===2?.84:1;
+  AMB=[L.amb[0]*dim,L.amb[1]*dim,L.amb[2]*dim];
+  FOG_M=Math.min(L.vis,w.vis);
+}
+function applyWeather(i){
+  i=clamp(i,0,2);
+  G.weather=i;SAVE.weather=i;saveGame();
+  applyLook();
+}
+function cycleTod(){
+  TOD=(TOD+1)%LOOKS.length;applyLook();
+  if(G.state==='run')msg(`时段：${LOOKS[TOD].name}`,'',1800);
+}
+function applyDiff(i){
+  i=clamp(i,0,2);
+  G.diff=i;SAVE.diff=i;saveGame();
+  const d=DIFF[i];
+  for(const st of G.stations){
+    st.arr=st.arr0+d.slack[st.idx];
+    st.dep=st.dep0+d.slack[st.idx];
+  }
+}
+function addDelta(label,pts){G.deltas.push({label,pts});G.score=Math.max(0,G.score+pts);}
+
+/* ================= DOM ================= */
+const $=id=>document.getElementById(id);
+const view=$('view'),ctx=view.getContext('2d');
+const profCv=$('profile'),profCtx=profCv.getContext('2d');
+const spdCv=$('spdCanvas'),spdCtx=spdCv.getContext('2d');
+let W=0,H=0,CX=0,HOR=0,FPX=0,FPY=0;
+function applyCam(){
+  const c=CAMS[G.cam];
+  HOR=H*c.hor;
+  FPX=CX/Math.tan(c.fovH/2);
+  FPY=(H*0.5)/Math.tan(c.fovV/2);
+}
+function resize(){
+  W=view.width=window.innerWidth;H=view.height=window.innerHeight;
+  CX=W/2;
+  applyCam();
+  const pw=profCv.parentElement.clientWidth-20,ph=profCv.parentElement.clientHeight-12;
+  profCv.width=Math.max(200,pw);profCv.height=Math.max(30,ph);
+  profStatic();
+}
+window.addEventListener('resize',resize);
+
+/* ================= 音频 ================= */
+let AC=null,MASTER=null,ROLL_F=null,ROLL_G=null,BRAKE_G=null,WIND_G=null,HUM_O=null,HUM_G=null,
+    SQ_F=null,SQ_G=null,CLICK_BUF=null,NBUF=null,lastJoint=0,
+    VVVF_O=null,VVVF_G=null,lastZone='field';
+function out(){return MASTER||AC.destination;}
+function audio(){
+  if(!AC){try{
+    AC=new(window.AudioContext||window.webkitAudioContext)();
+    MASTER=AC.createGain();MASTER.gain.value=SAVE.mute?0:.55;MASTER.connect(AC.destination);
+    buildAudioGraph();
+  }catch(e){AC=null;}}
+  if(AC&&AC.state==='suspended')AC.resume();
+  return AC;}
+function buildAudioGraph(){
+  const len=AC.sampleRate*2;
+  const buf=AC.createBuffer(1,len,AC.sampleRate);
+  const d=buf.getChannelData(0);
+  for(let i=0;i<len;i++)d[i]=Math.random()*2-1;
+  const noise=AC.createBufferSource();noise.buffer=buf;noise.loop=true;
+  // 轮轨滚动噪声（随速度变亮）
+  ROLL_F=AC.createBiquadFilter();ROLL_F.type='bandpass';ROLL_F.frequency.value=400;ROLL_F.Q.value=1.1;
+  ROLL_G=AC.createGain();ROLL_G.gain.value=0;
+  noise.connect(ROLL_F).connect(ROLL_G).connect(MASTER);
+  // 制动摩擦
+  const bf=AC.createBiquadFilter();bf.type='highpass';bf.frequency.value=1400;
+  BRAKE_G=AC.createGain();BRAKE_G.gain.value=0;
+  noise.connect(bf).connect(BRAKE_G).connect(MASTER);
+  // 风噪
+  const wf=AC.createBiquadFilter();wf.type='lowpass';wf.frequency.value=900;
+  WIND_G=AC.createGain();WIND_G.gain.value=0;
+  noise.connect(wf).connect(WIND_G).connect(MASTER);
+  // 弯道轮缘啸叫
+  SQ_F=AC.createBiquadFilter();SQ_F.type='bandpass';SQ_F.frequency.value=2300;SQ_F.Q.value=6;
+  SQ_G=AC.createGain();SQ_G.gain.value=0;
+  noise.connect(SQ_F).connect(SQ_G).connect(MASTER);
+  // 牵引电机嗡鸣
+  HUM_O=AC.createOscillator();HUM_O.type='triangle';HUM_O.frequency.value=80;
+  const lp=AC.createBiquadFilter();lp.type='lowpass';lp.frequency.value=320;
+  HUM_G=AC.createGain();HUM_G.gain.value=0;
+  HUM_O.connect(lp).connect(HUM_G).connect(MASTER);
+  // 牵引变流器（VVVF）高频变频音
+  VVVF_O=AC.createOscillator();VVVF_O.type='sawtooth';VVVF_O.frequency.value=520;
+  const vf=AC.createBiquadFilter();vf.type='bandpass';vf.frequency.value=1200;vf.Q.value=7;
+  VVVF_G=AC.createGain();VVVF_G.gain.value=0;
+  VVVF_O.connect(vf).connect(VVVF_G).connect(MASTER);
+  noise.start();HUM_O.start();VVVF_O.start();
+}
+function updateAudio(){
+  if(!AC)return;
+  const t=AC.currentTime,v=Math.abs(G.v);
+  const set=(param,val)=>param.setTargetAtTime(val,t,.12);
+  const running=G.state==='run';
+  const sp=running?clamp(v/100,0,1):0;
+  const braking=running?(G.eb?1:G.notchB/7):0;
+  const tun=zoneAt(G.pos)==='tunnel';
+  set(ROLL_G.gain,running?0.012+0.17*sp+(tun?0.02*sp:0):0);
+  set(ROLL_F.frequency,260+780*sp);
+  set(BRAKE_G.gain,braking*sp*0.22);
+  set(WIND_G.gain,running?0.12*sp*sp+(WEATHER[G.weather].rain?0.035:0)+(tun?0.05*sp:0):0);
+  const cur=Math.abs(curveAt(G.pos));
+  set(SQ_G.gain,running&&sp>.2?Math.min(.07,cur*30*sp):0);
+  set(SQ_F.frequency,2000+600*sp);
+  const humOn=running&&G.notchP>0&&!G.doorsOpen&&!G.eb;
+  set(HUM_G.gain,humOn?0.055*(G.notchP/4):0);
+  set(HUM_O.frequency,70+v*1.9);
+  // 牵引变流器 VVVF 变频音（随速度与级位升高）
+  const vvvfOn=running&&G.notchP>0&&!G.doorsOpen&&!G.eb;
+  set(VVVF_G.gain,vvvfOn?0.010+0.020*(G.notchP/4):0);
+  set(VVVF_O.frequency,360+v*2.2+G.notchP*35);
+  // 进出隧道：气压变化与回声
+  const zn=zoneAt(G.pos);
+  if(running&&zn!==lastZone){
+    if(zn==='tunnel'){hiss(.6,.10,380);buzz(35);G.shake=Math.max(G.shake,2);}
+    else if(lastZone==='tunnel'){hiss(.7,.08,720);buzz(25);}
+  }
+  lastZone=zn;
+  // 轨缝冲击声与画面轻微颠簸（每 25 m 一处，速度越高节奏越快）
+  const j=Math.floor(G.pos/25);
+  if(running&&v>3){
+    if(j!==lastJoint){
+      const n=Math.min(3,Math.abs(j-lastJoint));lastJoint=j;
+      for(let k=0;k<n;k++)railClick(v,k&1);
+      G.shake=Math.max(G.shake,.9+sp*1.6);
+      if((j&7)===0)buzz(8);
+    }
+  }else lastJoint=j;
+}
+function noiseBuf(){
+  if(NBUF)return NBUF;
+  const len=Math.floor(AC.sampleRate*.5),b=AC.createBuffer(1,len,AC.sampleRate),d=b.getChannelData(0);
+  for(let i=0;i<len;i++)d[i]=Math.random()*2-1;
+  NBUF=b;return b;
+}
+function clickBuf(){
+  if(CLICK_BUF)return CLICK_BUF;
+  const len=Math.floor(AC.sampleRate*.08),b=AC.createBuffer(1,len,AC.sampleRate),d=b.getChannelData(0);
+  for(let i=0;i<len;i++){const e=1-i/len;d[i]=(Math.random()*2-1)*e*e;}
+  CLICK_BUF=b;return b;
+}
+function hiss(dur,vol,hp){
+  const ac=audio();if(!ac||SAVE.mute)return;
+  const src=ac.createBufferSource();src.buffer=noiseBuf();
+  const f=ac.createBiquadFilter();f.type='highpass';f.frequency.value=hp||1500;
+  const g=ac.createGain();
+  g.gain.setValueAtTime(vol||.05,ac.currentTime);
+  g.gain.exponentialRampToValueAtTime(.0001,ac.currentTime+dur);
+  src.connect(f).connect(g).connect(out());
+  src.start();src.stop(ac.currentTime+dur);
+}
+function railClick(v,side){
+  const ac=audio();if(!ac||SAVE.mute||G.state!=='run')return;
+  const src=ac.createBufferSource();src.buffer=clickBuf();
+  const bp=ac.createBiquadFilter();bp.type='bandpass';
+  bp.frequency.value=820+(side?420:0)+Math.random()*220;bp.Q.value=2.4;
+  const g=ac.createGain();
+  const vol=.015+clamp(v/130,0,1)*.075;
+  g.gain.setValueAtTime(vol,ac.currentTime);
+  g.gain.exponentialRampToValueAtTime(.0001,ac.currentTime+.06);
+  src.connect(bp).connect(g).connect(out());
+  src.start();src.stop(ac.currentTime+.08);
+}
+function doorSound(open){
+  const ac=audio();if(!ac||SAVE.mute)return;
+  const t0=ac.currentTime;
+  const o=ac.createOscillator(),g=ac.createGain();
+  o.type='sawtooth';
+  o.frequency.setValueAtTime(open?150:118,t0);
+  o.frequency.linearRampToValueAtTime(open?72:60,t0+.55);
+  g.gain.setValueAtTime(.0001,t0);
+  g.gain.exponentialRampToValueAtTime(.045,t0+.05);
+  g.gain.exponentialRampToValueAtTime(.0001,t0+.62);
+  o.connect(g).connect(out());o.start(t0);o.stop(t0+.64);
+  hiss(.35,.05,2000);
+}
+function beep(freq,dur,type,vol){
+  const ac=audio();if(!ac)return;
+  const o=ac.createOscillator(),g=ac.createGain();
+  o.type=type||'square';o.frequency.value=freq;
+  g.gain.setValueAtTime(vol||.08,ac.currentTime);
+  g.gain.exponentialRampToValueAtTime(.0001,ac.currentTime+dur);
+  o.connect(g).connect(out());o.start();o.stop(ac.currentTime+dur);}
+function horn(){const ac=audio();if(!ac)return;
+  [311,415].forEach(f=>{const o=ac.createOscillator(),g=ac.createGain();
+    o.type='sawtooth';o.frequency.value=f;
+    g.gain.setValueAtTime(.06,ac.currentTime);
+    g.gain.setValueAtTime(.06,ac.currentTime+.8);
+    g.gain.exponentialRampToValueAtTime(.0001,ac.currentTime+1.1);
+    o.connect(g).connect(out());o.start();o.stop(ac.currentTime+1.1);});}
+function airSound(release){
+  // 制动施加/缓解时的气动排气与充风声
+  const ac=audio();if(!ac||SAVE.mute)return;
+  const t0=ac.currentTime;
+  const src=ac.createBufferSource();src.buffer=noiseBuf();
+  const bp=ac.createBiquadFilter();bp.type='bandpass';bp.Q.value=1.5;
+  bp.frequency.setValueAtTime(release?900:560,t0);
+  bp.frequency.linearRampToValueAtTime(release?380:1900,t0+.5);
+  const g=ac.createGain();
+  g.gain.setValueAtTime(.0001,t0);
+  g.gain.exponentialRampToValueAtTime(.055,t0+.05);
+  g.gain.exponentialRampToValueAtTime(.0001,t0+.55);
+  src.connect(bp).connect(g).connect(out());
+  src.start(t0);src.stop(t0+.6);
+}
+function announce(){
+  // 进站广播提示音（三音下行）
+  beep(784,.16,'sine',.09);
+  setTimeout(()=>beep(659,.16,'sine',.08),180);
+  setTimeout(()=>beep(523,.32,'sine',.08),360);
+}
+function buzz(p){try{if(SAVE.haptic&&navigator.vibrate)navigator.vibrate(p);}catch(e){}}
+function toggleHaptic(){
+  SAVE.haptic=!SAVE.haptic;saveGame();
+  const b=$('bHaptic');
+  b.textContent=SAVE.haptic?'震动 开':'震动 关';
+  b.classList.toggle('muted',!SAVE.haptic);
+  if(SAVE.haptic)buzz(30);
+}
+function toggleMute(){
+  audio();
+  SAVE.mute=!SAVE.mute;saveGame();
+  if(MASTER)MASTER.gain.value=SAVE.mute?0:.55;
+  const b=$('bMute');
+  b.textContent=SAVE.mute?'音效 关':'音效 开';
+  b.classList.toggle('muted',SAVE.mute);
+  if(!SAVE.mute)beep(520,.06,'square',.05);
+}
+
+/* ================= 消息 ================= */
+const msgs=[];
+function msg(text,cls,ms){msgs.push({text,cls:cls||'',until:performance.now()+(ms||3500)});
+  if(msgs.length>4)msgs.shift();renderMsgs();}
+function renderMsgs(){
+  const now=performance.now();
+  $('msg').innerHTML=msgs.filter(m=>m.until>now)
+    .map(m=>`<div class="msgItem ${m.cls}">${m.text}</div>`).join('');}
+
+/* ================= 物理 ================= */
+const TRAC_BASE=[0,.28,.5,.75,1.05], TRAC_SLOPE=.0075;
+const BRAKE_D=[0,.16,.26,.36,.46,.56,.68,.82], EB_D=1.25, DWELL=20;
+let aPrev=0;
+function physStep(dt){
+  if(G.state!=='run')return;
+  const prevPos=G.pos;
+  const v=G.v, dirV=v<0?-1:1;
+  // 空气制动充风/缓解延时（实际级位滞后于手柄）
+  const targetB=G.eb?EB_D:BRAKE_D[G.notchB];
+  const tau=G.eb?0.8:(targetB>G.bActual?2.2:3.6);
+  G.bActual+=(targetB-G.bActual)*Math.min(1,dt/tau);
+  let a=-G.bActual*dirV;
+  // 牵引
+  if(!G.eb&&!G.doorsOpen){   // 车门开时禁止牵引
+    const adh=WEATHER[G.weather].adh;
+    const slipK=(adh<0.7&&G.notchP>=3&&Math.abs(v*3.6)<45)?0.82:1;
+    if(G.rev){
+      if(G.notchP>0&&v>-2.8)a-=.12+.33*G.notchP/4;
+    }else if(G.notchP>0){
+      a+=Math.max(0,TRAC_BASE[G.notchP]-TRAC_SLOPE*Math.max(0,v))*slipK;
+    }
+    // 低粘着空转提示
+    if(adh<0.7&&G.notchP>=3&&Math.abs(v)<6&&G.t>G.slipT+4){
+      G.slipT=G.t;G.shake=Math.max(G.shake,3);buzz(20);
+      msg('轮轨空转，粘着不足，请降低牵引级','warn',3000);}
+  }
+  // 坡度与阻力
+  a+=-9.81*gradeAt(G.pos);
+  a+=-dirV*(0.0000055*v*v);
+  // 静止保持
+  let nv=v+a*dt;
+  if(v===0&&G.notchP===0&&(G.notchB>0||G.eb||G.bActual>.05))nv=0;
+  if(v!==0&&Math.sign(nv)!==Math.sign(v)&&(G.notchB>0||G.eb||G.bActual>.1))nv=0;
+  if(Math.abs(nv)<0.02&&(G.notchB>0||G.eb||G.notchP===0))nv=0;
+  G.v=nv;G.pos=Math.max(0,G.pos+nv*dt);
+  // 溜逸提示
+  if(G.notchB===0&&!G.eb&&G.notchP===0&&Math.abs(nv)>0.5&&
+     Math.abs(gradeAt(G.pos))>0.004&&G.t>G.rollT+4){
+    G.rollT=G.t;G.shake=Math.max(G.shake,2);
+    msg('列车溜逸！请立即施加制动','warn',3000);}
+  // 能耗（牵引时）
+  const aTrac=(G.notchP>0&&!G.doorsOpen&&!G.eb)?
+    Math.max(0,(G.rev?0.2:TRAC_BASE[G.notchP]-TRAC_SLOPE*Math.max(0,v))):0;
+  if(aTrac>0&&Math.abs(nv)>0.1)G.energy+=aTrac*400000*Math.abs(nv)*dt/3.6e6;
+  // 舒适度（手柄猛变惩罚）
+  const da=Math.abs((nv-v)/Math.max(dt,1e-6)-aPrev);
+  aPrev=(nv-v)/Math.max(dt,1e-6);
+  if(da>DIFF[G.diff].jerk&&G.t>G.jerkT+1.5&&Math.abs(nv)>1){G.jerkT=G.t;G.comfortLoss+=.5;
+    G.shake=Math.max(G.shake,Math.min(6,da*5));buzz(15);
+    addDelta('操作冲动',-.5);}
+  // 超速防护
+  const lim=limitAt(G.pos),vk=Math.abs(G.v)*3.6,pd=DIFF[G.diff];
+  if(vk>lim+pd.warn){
+    if(G.t>G.osTimer+1){beep(1200,.12,'square',.07);buzz(20);G.osTimer=G.t;}
+    if(!G.osSince)G.osSince=G.t;
+    if(vk>lim+pd.hard1||(vk>lim+pd.hard2&&G.t-G.osSince>pd.grace)){
+      if(!G.osActive){G.osActive=true;G.eb=true;G.ebAuto=true;
+        G.shake=Math.max(G.shake,8);buzz([60,40,60]);
+        addDelta('超速触发ATP紧急制动',-6);
+        msg('超速！ATP 自动施加紧急制动','warn',4000);beep(500,.6,'sawtooth',.12);}
+    }
+  }else{G.osSince=0;
+    if(G.osActive&&vk<=lim-2){G.osActive=false;G.eb=false;G.ebAuto=false;G.notchB=0;}}
+  if(G.eb&&G.ebAuto&&!G.osActive&&vk<=lim-2){G.eb=false;G.ebAuto=false;}
+  if(G.eb&&!G.ebAuto&&Math.abs(G.v)===0){G.eb=false;msg('紧急制动已缓解','',2500);
+    airSound(true);buzz(15);}
+  // 冒进信号检查（仅前进）
+  if(G.v>0){
+    for(const s of SIGS){
+      if(prevPos<s.pos&&G.pos>=s.pos&&aspectAt(s.pos)==='R'){
+        fail('冒进红灯信号！');return;}
+    }
+  }
+  // 尽头线
+  if(G.pos>=CRASH_POS){fail('冲出线路末端！');return;}
+  // 车站逻辑
+  stationLogic(prevPos);
+  // 调度事件
+  eventLogic();
+  G.t+=dt;
+}
+
+/* ================= 车站逻辑 ================= */
+function stWindow(st){return G.pos-st.pos;}
+function stationLogic(prevPos){
+  for(const st of G.stations){
+    // 进站预告
+    const d=st.pos-G.pos;
+    if(st.status==='pending'){
+      if(!st.ann2&&d>0&&d<2200){st.ann2=true;announce();buzz(25);
+        msg(`前方进站：${st.name}，注意对标停车`,'',4000);}
+      if(!st.ann3&&d>0&&d<400){st.ann3=true;msg('停车位置注意','',2500);}
+      // 越站（中间站）
+      if(st.idx<G.stations.length-1&&G.pos>st.pos+8){
+        st.status='skipped';addDelta(`${st.name} 越站未停`,-25);
+        msg(`越站通过 ${st.name}！未办理乘降 -25分`,'warn',5000);}
+    }
+    // 停稳判定
+    if(G.v===0&&(st.status==='pending')&&Math.abs(stWindow(st))<=DIFF[G.diff].win){
+      st.status='arrived';st.arrActual=G.t;
+      const e=Math.abs(stWindow(st)),k=DIFF[G.diff].tol;
+      let pts=0,word='';
+      if(e<=0.3*k){pts=0;word='对标精准！';}
+      else if(e<=0.6*k){pts=-2;word='对标优秀';}
+      else if(e<=1.2*k){pts=-4;word='对标良好';}
+      else if(e<=2*k){pts=-7;word='对标一般';}
+      else if(e<=3.5*k){pts=-11;word='对标偏差较大';}
+      else{pts=-16;word='对标不合格';}
+      st.err=e;
+      if(pts)addDelta(`${st.name} 对标误差 ${e.toFixed(2)}m`,pts);
+      msg(`${word}（误差 ${e.toFixed(2)} m）`,pts?'warn':'good',4500);
+      chime();buzz(30);G.shake=Math.max(G.shake,3);
+      if(st.arr&&st.idx>0){
+        const late=G.t-st.arr,pd=DIFF[G.diff];
+        if(late>pd.lateStart){
+          const p=-Math.min(pd.lateCap,Math.floor((late-pd.lateStart)/pd.lateStep));
+          addDelta(`${st.name} 晚点 ${late|0}s`,p);
+          msg(`晚点 ${late|0} 秒到达`,'warn',4000);}
+        else msg(late<-20?`早点 ${(-late)|0} 秒到达`:'正点到达','good',3000);
+      }
+    }
+    // 过标提示（终点）
+    if(st.idx===G.stations.length-1&&st.status==='pending'&&G.pos>st.pos+5&&G.pos<CRASH_POS-30){
+      if(!st.annOver){st.annOver=true;msg('越过停车标！可按 R 倒车重新对标','warn',5000);}
+    }
+    // 已离开车站范围
+    if(st.status==='closed'&&G.pos>st.pos+700)st.status='departed';
+  }
+}
+function tryDoor(){
+  if(G.v!==0){msg('列车未停稳，无法开关门','warn',2500);return;}
+  if(G.doorsOpen){ // 关门
+    const st=G.stations.find(s=>s.status==='boarding');
+    if(st&&st.idx>0&&G.t-st.doorOpenT<DWELL){
+      msg(`乘降作业未完成，还需 ${Math.ceil(DWELL-(G.t-st.doorOpenT))} 秒`,'warn',2500);return;}
+    G.doorsOpen=false;
+    const st2=G.stations.find(s=>s.status==='boarding');
+    if(st2){st2.status='closed';st2.confirmed=false;}
+    doorSound(false);chime();buzz(25);G.shake=Math.max(G.shake,1.5);
+    msg('车门关闭 · 请确认发车（Y / 点“确认发车”）','',3000);
+    checkDepReady();
+  }else{ // 开门
+    const st=G.stations.find(s=>(s.status==='arrived')&&Math.abs(stWindow(s))<=DIFF[G.diff].win);
+    if(!st){msg('不在站台停车窗内，无法开门','warn',2500);return;}
+    G.doorsOpen=true;st.status='boarding';st.doorOpenT=G.t;
+    doorSound(true);chime();buzz(25);msg(`车门开启 · ${st.name} 乘降中`,'good',3000);
+    if(st.idx===G.stations.length-1){G.finishAt=G.t+2.2;}
+  }
+}
+function depAuthorized(st){return st.status==='closed'&&st.confirmed&&G.t>=st.dep&&!G.doorsOpen;}
+function checkDepReady(){
+  for(const st of G.stations){
+    if(st.status==='closed'&&st.confirmed&&G.t>=st.dep&&!st.annDep){st.annDep=true;
+      msg(`${st.name} 发车条件具备，信号开放`,'good',4000);beep(980,.2,'sine',.1);}
+  }
+}
+function doConfirm(){
+  if(G.doorsOpen){msg('车门未关闭，不能确认发车','warn',2500);return;}
+  const st=G.stations.find(s=>s.status==='closed'&&Math.abs(s.pos-G.pos)<900);
+  if(!st){msg('当前没有待发车作业','warn',2500);return;}
+  if(st.confirmed){msg('已确认发车','',1800);return;}
+  if(G.t<st.dep){msg(`发车时刻未到（${fmtT(st.dep)}），暂不能确认`,'warn',2600);return;}
+  st.confirmed=true;chime();buzz(20);
+  msg('发车确认完成，信号开放','good',3000);beep(980,.2,'sine',.1);
+}
+
+/* ================= 调度事件 ================= */
+function eventLogic(){
+  if(G.eventCleared)return;
+  if(!G.annEvent&&G.t>=635&&G.pos<33500){G.annEvent=true;
+    msg('调度：前方列车运行缓慢，注意信号机显示','',5000);}
+  if(G.t>=640&&G.t<=705){
+    const ep=34500+(G.t-640)*50;
+    if(ep<G.pos+400){G.eventCleared=true;return;}
+    G.eventPos=ep;
+  }else if(G.t>705&&!G.eventCleared){G.eventCleared=true;
+    msg('前行列车已驶离，恢复正常运行','good',4000);}
+}
+
+/* ================= 信号显示 ================= */
+function restrictions(){
+  const r=[];
+  for(const st of G.stations){
+    if(st.status==='pending'&&st.pos>G.pos)
+      r.push({pos:st.pos,red:false,label:`${st.name} 停车`});
+    const depSig=st.pos+180;
+    if((st.status==='arrived'||st.status==='boarding'||st.status==='closed')
+      &&G.pos>st.pos-260&&G.pos<depSig+5&&!depAuthorized(st))
+      r.push({pos:depSig,red:true,label:'出站信号未开放'});
+  }
+  r.push({pos:EOL_POS,red:false,label:'尽头线 停车'});
+  if(!G.eventCleared&&G.t>=640&&G.t<=705&&G.eventPos>G.pos+400)
+    r.push({pos:G.eventPos,red:true,label:'前行列车 停车'});
+  return r;
+}
+function aspectAt(sigPos){
+  let best='G';
+  for(const r of restrictions()){
+    const d=r.pos-sigPos;if(d<=0)continue;
+    if(r.red){if(d<=BLOCK)return'R';if(d<=2*BLOCK)best='Y';}
+    else{if(d<=2*BLOCK)best='Y';}
+  }
+  return best;
+}
+
+/* ================= 失败/完成 ================= */
+function fail(reason){
+  G.state='fail';G.failReason=reason;
+  beep(160,.6,'sawtooth',.16);buzz([200,80,200]);
+  showOverlay(`<span style="color:#ff6a55">运行终止</span>`,
+   `<p style="font-size:17px"><b>${reason}</b></p>
+    <p>难度等级：${DIFF[G.diff].name}</p>
+    <p>本次运行因严重违章被终止，成绩无效，未获得驾驶资历。</p>
+    <p>行驶里程 ${(G.pos/1000).toFixed(2)} km · 用时 ${fmtT(G.t)}</p>`,'重新驾驶');
+}
+function finish(){
+  G.state='finish';
+  beep(1046,.25,'sine',.12);
+  setTimeout(()=>beep(1318,.4,'sine',.1),260);
+  buzz([50,60,50]);
+  const pd=DIFF[G.diff];
+  // 能耗评价
+  if(G.energy<pd.eGood)addDelta('能耗优秀',3);
+  else if(G.energy>pd.eBad)addDelta('能耗偏高',-3);
+  const rows=G.deltas.map(d=>`<tr><td>${d.label}</td>
+    <td style="text-align:right;color:${d.pts<0?'#ff8a70':'#9dff9d'}">${d.pts>0?'+':''}${d.pts}</td></tr>`).join('');
+  const sc=G.score;
+  const grade=sc>=95?'S':sc>=85?'A':sc>=72?'B':sc>=58?'C':'D';
+  const gCls={S:'gradeS',A:'gradeA',B:'gradeB',C:'gradeC',D:'gradeD'}[grade];
+  const stRows=G.stations.filter(s=>s.idx>0).map(s=>{
+    const late=s.arrActual==null?'—':`${(s.arrActual-s.arr)|0}s`;
+    return`<tr><td>${s.name}</td><td>${s.err==null?'越站':s.err.toFixed(2)+' m'}</td>
+      <td>${s.status==='skipped'?'<span style=color:#ff8a70>越站</span>':late}</td></tr>`;}).join('');
+  // 段位结算
+  const gain=Math.round(sc*pd.xpMul);
+  const before=SAVE.xp;
+  SAVE.xp=before+gain;
+  if(!SAVE.best[G.diff]||sc>=SAVE.best[G.diff])SAVE.best[G.diff]=sc;
+  const ri=rankIndex(SAVE.xp),promoted=ri>rankIndex(before);
+  saveGame();
+  const next=ri+1<RANKS.length?RANKS[ri+1]:null;
+  const pct=next?Math.min(100,Math.round((SAVE.xp-RANKS[ri].xp)/(next.xp-RANKS[ri].xp)*100)):100;
+  const rankBlock=`<div class="rankBox">
+      <div class="rrow"><span>本次获得资历</span><b>+${gain}</b></div>
+      <div class="rrow"><span>难度系数</span><b>${pd.name} ×${pd.xpMul}</b></div>
+      <div class="rbar"><i style="width:${pct}%"></i></div>
+      <div class="rrow small"><span>段位 ${RANKS[ri].name} · 资历 ${SAVE.xp}</span>
+        <span>${next?`距晋升 ${next.xp-SAVE.xp}`:'已达最高段位'}</span></div>
+      ${promoted?`<div class="promo">晋升为 ${RANKS[ri].name}！</div>`:''}
+    </div>`;
+  showOverlay(`${pd.name} · 到达海州站 · 运行结束`,
+   `<div style="text-align:center;margin:6px 0 14px">
+      <span style="font-size:52px;font-weight:900" class="${gCls}">${grade}</span>
+      <span style="font-size:26px;margin-left:14px">总分 <b>${sc}</b></span></div>
+    <table><tr><th>车站</th><th>对标误差</th><th>到点偏差</th></tr>${stRows}</table>
+    <table><tr><th>评分项</th><th style="text-align:right">分数</th></tr>
+    ${rows||'<tr><td>无扣分项，驾驶平稳</td><td style="text-align:right">—</td></tr>'}
+    <tr><td>能耗</td><td style="text-align:right">${G.energy.toFixed(0)} kWh</td></tr>
+    <tr><td>总用时</td><td style="text-align:right">${fmtT(G.t)}</td></tr></table>
+    ${rankBlock}`,'再次驾驶');
+}
+function showOverlay(title,body,btn){
+  $('ovTitle').innerHTML=title;$('ovSub').textContent='';
+  $('ovBody').innerHTML=body;$('ovBtn').textContent=btn;
+  $('overlay').style.display='flex';
+}
+
+/* ================= 输入 ================= */
+function tracUp(){
+  if(G.doorsOpen){msg('车门未关闭，无法牵引','warn',2500);return;}
+  if(G.eb){msg('紧急制动中，无法牵引','warn',2500);return;}
+  const st=G.stations.find(s=>s.status==='closed'&&Math.abs(s.pos-G.pos)<900);
+  if(st){
+    if(!st.confirmed){msg('发车前请先确认（Y）','warn',2600);return;}
+    if(G.t<st.dep){msg(`未到发车时刻 ${fmtT(st.dep)}`,'warn',2600);return;}
+  }
+  const wasB=G.notchB;
+  G.notchB=0;G.notchP=Math.min(4,G.notchP+1);
+  if(wasB>0)airSound(true);
+  beep(440,.05,'square',.04);buzz(8);}
+function tracDown(){G.notchP=Math.max(0,G.notchP-1);beep(392,.05,'square',.04);buzz(6);}
+function brakeUp(){if(G.eb)return;G.notchP=0;G.notchB=Math.min(7,G.notchB+1);
+  airSound(false);beep(330,.05,'square',.04);buzz(10);}
+function brakeDown(){if(G.eb)return;const was=G.notchB;
+  G.notchB=Math.max(0,G.notchB-1);if(was>0)airSound(true);beep(294,.05,'square',.04);buzz(6);}
+function doEB(){if(!G.eb){G.eb=true;G.ebAuto=false;G.notchP=0;G.notchB=0;
+  G.shake=13;buzz([90,40,90]);airSound(false);
+  addDelta('使用紧急制动',-4);msg('紧急制动！','warn',3000);beep(500,.5,'sawtooth',.12);}}
+function doRev(){if(Math.abs(G.v)>0.3){msg('列车未停稳','warn',2000);return;}
+  G.rev=!G.rev;msg(G.rev?'倒车模式（限速10km/h）':'取消倒车','',2500);}
+function doPause(){if(G.state==='run'){G.state='pause';$('pauseHint').style.display='block';}
+  else if(G.state==='pause'){G.state='run';$('pauseHint').style.display='none';}}
+function setCam(i){
+  const n=CAMS.length;
+  G.cam=(i%n+n)%n;
+  applyCam();
+  document.querySelectorAll('.vchip').forEach((b,k)=>b.classList.toggle('on',k===G.cam));
+  if(G.state==='run'||G.state==='pause'){render();updateHUD();}
+  beep(520,.06,'square',.05);
+  msg(`视角：${CAMS[G.cam].name}`,'',1600);
+}
+function cycleCam(){setCam(G.cam+1);}
+const KEYMAP={KeyW:tracUp,ArrowUp:tracUp,KeyS:tracDown,ArrowDown:tracDown,
+  KeyD:brakeUp,ArrowRight:brakeUp,KeyA:brakeDown,ArrowLeft:brakeDown,
+  KeyG:tryDoor,Enter:tryDoor,Space:doEB,KeyH:horn,KeyR:doRev,KeyP:doPause};
+window.addEventListener('keydown',e=>{
+  if(['ArrowUp','ArrowDown','ArrowLeft','ArrowRight','Space'].includes(e.code))e.preventDefault();
+  if(e.repeat)return;
+  if(e.code==='KeyM'){toggleMute();return;}
+  if(e.code==='KeyN'){toggleHaptic();return;}
+  if(e.code==='KeyY'){if(G.state==='run')doConfirm();return;}
+  if(e.code==='KeyC'||e.code==='KeyV'){
+    if(G.state==='run'||G.state==='pause')cycleCam();return;}
+  if(e.code==='KeyT'){
+    if(G.state==='run'||G.state==='pause')cycleTod();return;}
+  if(G.state!=='run')return;
+  const f=KEYMAP[e.code];if(f)f();});
+$('bTplus').onclick=()=>G.state==='run'&&tracUp();
+$('bTminus').onclick=()=>G.state==='run'&&tracDown();
+$('bBplus').onclick=()=>G.state==='run'&&brakeUp();
+$('bBminus').onclick=()=>G.state==='run'&&brakeDown();
+$('bEB').onclick=()=>G.state==='run'&&doEB();
+$('bDoor').onclick=()=>G.state==='run'&&tryDoor();
+$('bHorn').onclick=()=>G.state==='run'&&horn();
+$('bRev').onclick=()=>G.state==='run'&&doRev();
+$('bPause').onclick=()=>{if(G.state==='run'||G.state==='pause')doPause();};
+$('bMute').onclick=()=>toggleMute();
+$('bHaptic').onclick=()=>toggleHaptic();
+$('bConfirm').onclick=()=>{if(G.state==='run')doConfirm();};
+document.querySelectorAll('.vchip').forEach(b=>{
+  b.onclick=()=>{if(G.state==='run'||G.state==='pause')setCam(+b.dataset.i);};});
+$('bRestart').onclick=()=>location.reload();
+let diffSel=SAVE.diff,weatherSel=SAVE.weather;
+function refreshTitleUI(){
+  document.querySelectorAll('.dchip[data-d]').forEach(b=>b.classList.toggle('on',+b.dataset.d===diffSel));
+  document.querySelectorAll('.wchip').forEach(b=>b.classList.toggle('on',+b.dataset.w===weatherSel));
+  $('wxNote').textContent=['干燥 · 粘着良好','轨面湿润 · 粘着下降','能见度低 · 注意瞭望'][weatherSel];
+  $('rankInfo').textContent=`${RANKS[rankIndex(SAVE.xp)].name} · 资历 ${SAVE.xp}`;
+  $('bestInfo').textContent='历史最佳：'+DIFF.map((d,i)=>
+    `${d.name} ${SAVE.best[i]==null?'—':SAVE.best[i]}`).join(' · ');
+  const mb=$('bMute');
+  mb.textContent=SAVE.mute?'音效 关':'音效 开';
+  mb.classList.toggle('muted',SAVE.mute);
+  const hb=$('bHaptic');
+  hb.textContent=SAVE.haptic?'震动 开':'震动 关';
+  hb.classList.toggle('muted',!SAVE.haptic);
+}
+document.querySelectorAll('.dchip[data-d]').forEach(b=>{
+  b.onclick=()=>{diffSel=+b.dataset.d;refreshTitleUI();beep(560,.06,'square',.05);};});
+document.querySelectorAll('.wchip').forEach(b=>{
+  b.onclick=()=>{weatherSel=+b.dataset.w;refreshTitleUI();beep(600,.06,'square',.05);};});
+$('ovBtn').onclick=()=>{
+  $('overlay').style.display='none';audio();
+  applyDiff(diffSel);
+  applyWeather(weatherSel);
+  G.state='run';
+  msg(`${DIFF[diffSel].name} · ${WEATHER[weatherSel].name} · 车门开启中，请先按 G 关闭车门`,'',6000);};
+
+/* ================= 渲染 ================= */
+const C={
+  skyT:[96,158,222],skyH:[214,234,248],fog:[207,227,245],
+  sun:[255,244,214],cloud:[255,255,255],
+  mtn1:[150,170,198],mtn2:[182,198,216],
+  field:[122,166,92],town:[150,158,120],hills:[96,138,82],
+  work:[168,150,104],forest:[72,116,66],tunnelG:[58,58,66],
+  water:[62,110,170],urban:[128,136,116],end:[110,118,104],
+  bed:[148,152,158],slab:[104,108,114],rail:[214,220,226],tieL:[88,92,98],
+};
+function groundColor(zone,par){
+  let b=C[zone==='tunnel'?'tunnelG':zone]||C.field;
+  if(zone==='bridge')b=C.water;
+  if(par&&zone!=='tunnel'&&zone!=='bridge')b=mix(b,[0,0,0],.05);
+  return b;
+}
+let pts=[];
+function project(){
+  pts.length=0;
+  const baseIdx=clamp(Math.floor(G.pos/SEG_LEN),0,segs.length-2);
+  const basePct=(G.pos-baseIdx*SEG_LEN)/SEG_LEN;
+  const base=segs[baseIdx];
+  const cam=CAMS[G.cam];
+  const camYAbs=cam.h+base.y+(segs[baseIdx+1].y-base.y)*basePct;
+  let x=-cam.lat,dx=-(base.curve*basePct);
+  for(let n=0;n<=DRAW_N;n++){
+    const idx=Math.min(baseIdx+n,segs.length-1);
+    const s=segs[idx];
+    const z=Math.max(s.pos-G.pos,0.5);
+    const kx=FPX/z,ky=FPY/z;
+    const sx=CX+kx*x;
+    const sy=HOR+ky*(camYAbs-s.y);
+    pts.push({s,z,kx,ky,sx,sy,xOff:x,fog:clamp(z/FOG_M,0,1)});
+    x+=dx;dx+=s.curve;
+  }
+  return camYAbs;
+}
+function quad(p1,p2,o1a,o1b,o2a,o2b,color){
+  // 四个角：(p1 横向偏移o1a..o1b)、(p2 o2a..o2b)，偏移单位米
+  ctx.fillStyle=color;ctx.beginPath();
+  ctx.moveTo(p1.sx+p1.kx*o1a,p1.sy);ctx.lineTo(p1.sx+p1.kx*o1b,p1.sy);
+  ctx.lineTo(p2.sx+p2.kx*o2b,p2.sy);ctx.lineTo(p2.sx+p2.kx*o2a,p2.sy);
+  ctx.closePath();ctx.fill();
+}
+function quadH(p1,p2,off,h1,h2,color){
+  // 高度 h 处的水平面（站台面）
+  ctx.fillStyle=color;ctx.beginPath();
+  ctx.moveTo(p1.sx+p1.kx*off[0],p1.sy-p1.ky*h1);ctx.lineTo(p1.sx+p1.kx*off[1],p1.sy-p1.ky*h1);
+  ctx.lineTo(p2.sx+p2.kx*off[1],p2.sy-p2.ky*h2);ctx.lineTo(p2.sx+p2.kx*off[0],p2.sy-p2.ky*h2);
+  ctx.closePath();ctx.fill();
+}
+function drawSky(camYAbs){
+  const g=ctx.createLinearGradient(0,0,0,HOR+2);
+  g.addColorStop(0,rgbRaw(C.skyT));g.addColorStop(1,rgbRaw(C.skyH));
+  ctx.fillStyle=g;ctx.fillRect(0,0,W,HOR+2);
+  // 星空与月亮（夜间）
+  if(TOD===0){
+    ctx.fillStyle='rgba(214,228,255,.9)';
+    for(let i=0;i<46;i++){
+      const sx=rnd01(i*3.13)*W,sy=rnd01(i*7.71)*HOR*.82,r=.6+rnd01(i*5.31)*1.2;
+      ctx.globalAlpha=.35+.65*(.5+.5*Math.sin(performance.now()*.0012+i*1.7));
+      ctx.fillRect(sx,sy,r,r);
+    }
+    ctx.globalAlpha=1;
+    const mx=W*.16,my=HOR*.26;
+    ctx.fillStyle='rgba(233,240,255,.96)';
+    ctx.beginPath();ctx.arc(mx,my,15,0,7);ctx.fill();
+    ctx.fillStyle='rgba(198,210,236,.55)';
+    ctx.beginPath();ctx.arc(mx+5,my-4,4,0,7);ctx.arc(mx-6,my+5,3,0,7);ctx.fill();
+    const mg=ctx.createRadialGradient(mx,my,8,mx,my,H*.16);
+    mg.addColorStop(0,'rgba(170,200,255,.22)');mg.addColorStop(1,'rgba(170,200,255,0)');
+    ctx.fillStyle=mg;ctx.fillRect(mx-H*.16,my-H*.16,H*.32,H*.32);
+  }
+  // 太阳（白天）/ 落日（黄昏）
+  if(G.weather===0&&TOD===2){
+    ctx.fillStyle='rgba(255,244,200,.9)';
+    ctx.beginPath();ctx.arc(W*.82,HOR*.34,26,0,7);ctx.fill();
+    ctx.fillStyle='rgba(255,244,200,.25)';
+    ctx.beginPath();ctx.arc(W*.82,HOR*.34,44,0,7);ctx.fill();
+  }else if(G.weather===0&&TOD===1){
+    const sy=HOR-H*.06;
+    ctx.fillStyle='rgba(255,196,120,.30)';
+    ctx.beginPath();ctx.arc(W*.78,sy,54,0,7);ctx.fill();
+    ctx.fillStyle='rgba(255,216,144,.95)';
+    ctx.beginPath();ctx.arc(W*.78,sy,26,0,7);ctx.fill();
+  }
+  // 云（随里程缓慢移动，双层）
+  const cloudRGB=TOD===0?'150,170,210':TOD===1?'255,208,180':'255,255,255';
+  const ca=G.weather===0?(TOD===0?.20:.75):.42;
+  ctx.fillStyle=`rgba(${cloudRGB},${ca})`;
+  const co=(G.pos*0.004)%(W+400);
+  for(let i=0;i<5;i++){
+    const cx0=((i*397+co*.6)%(W+300))-150,cy0=HOR*(.12+.13*((i*53)%7)/7);
+    ctx.beginPath();
+    ctx.ellipse(cx0,cy0,60,13,0,0,7);ctx.ellipse(cx0+34,cy0+5,42,10,0,0,7);
+    ctx.ellipse(cx0-38,cy0+6,36,9,0,0,7);ctx.fill();
+  }
+  ctx.fillStyle=`rgba(${cloudRGB},${ca*.4})`;
+  const co2=(G.pos*0.0025)%(W+500);
+  for(let i=0;i<6;i++){
+    const cx0=((i*541+co2*.5)%(W+420))-210,cy0=HOR*(.05+.07*((i*71)%5)/5);
+    ctx.beginPath();ctx.ellipse(cx0,cy0,110,22,0,0,7);ctx.fill();
+  }
+  // 地平线雾霭
+  const hz=ctx.createLinearGradient(0,HOR-H*.10,0,HOR+2);
+  hz.addColorStop(0,`rgba(${C.fog[0]},${C.fog[1]},${C.fog[2]},0)`);
+  hz.addColorStop(1,`rgba(${C.fog[0]},${C.fog[1]},${C.fog[2]},.62)`);
+  ctx.fillStyle=hz;ctx.fillRect(0,HOR-H*.10,W,H*.10+2);
+  // 眩光
+  if(G.weather===0&&TOD===2){
+    const gl=ctx.createRadialGradient(W*.82,HOR*.34,10,W*.82,HOR*.34,H*.32);
+    gl.addColorStop(0,'rgba(255,248,220,.55)');
+    gl.addColorStop(.35,'rgba(255,238,190,.16)');
+    gl.addColorStop(1,'rgba(255,238,190,0)');
+    ctx.fillStyle=gl;ctx.fillRect(0,0,W,HOR+2);
+  }else if(G.weather===0&&TOD===1){
+    const sy=HOR-H*.06;
+    const gl=ctx.createRadialGradient(W*.78,sy,10,W*.78,sy,H*.30);
+    gl.addColorStop(0,'rgba(255,184,112,.44)');
+    gl.addColorStop(.38,'rgba(255,170,100,.15)');
+    gl.addColorStop(1,'rgba(255,170,100,0)');
+    ctx.fillStyle=gl;ctx.fillRect(0,0,W,HOR+2);
+  }
+  // 远山两层（曲线视差）
+  const bend=pts.length?pts[pts.length-1].xOff*0.02:0;
+  drawRidge(C.mtn2,HOR*.52,90,bend*.3,11);
+  drawRidge(C.mtn1,HOR*.74,55,bend*.6,7);
+}
+function drawRain(){
+  if(!WEATHER[G.weather].rain)return;
+  const t=performance.now()/1000,sp=Math.abs(G.v);
+  ctx.strokeStyle='rgba(190,214,236,.5)';ctx.lineWidth=1.1;
+  ctx.beginPath();
+  for(let i=0;i<110;i++){
+    const rx=((i*97+t*260*(1+sp/60))%(W+160))-80;
+    const ry=((i*211+t*820*(1+sp/90))%(H+120))-60;
+    ctx.moveTo(rx,ry);ctx.lineTo(rx-5,ry+16);
+  }
+  ctx.stroke();
+}
+function drawHeadlight(){
+  if(TOD!==0)return;
+  ctx.save();ctx.globalCompositeOperation='lighter';
+  const lg=ctx.createLinearGradient(0,HOR,0,H);
+  lg.addColorStop(0,'rgba(255,246,220,0)');
+  lg.addColorStop(.45,'rgba(255,246,220,.05)');
+  lg.addColorStop(1,'rgba(255,248,224,.17)');
+  ctx.fillStyle=lg;
+  ctx.beginPath();
+  ctx.moveTo(CX-W*.025,HOR+6);ctx.lineTo(CX+W*.025,HOR+6);
+  ctx.lineTo(CX+W*.32,H);ctx.lineTo(CX-W*.32,H);
+  ctx.closePath();ctx.fill();
+  ctx.restore();
+}
+function drawWipers(){
+  if(!WEATHER[G.weather].rain||!CAMS[G.cam].cab)return;
+  const t=performance.now()/1000,sw=Math.sin(t*1.35)*.62;
+  const py=H-206,L=H*.5;
+  const blades=[-1,1].map(d=>{
+    const bx=W*(.5+d*.19),ang=-Math.PI/2+d*.3+sw*d*0.8;
+    return {bx,by:py,ex:bx+Math.cos(ang)*L,ey:py+Math.sin(ang)*L};
+  });
+  // 雨刷扫过判定：落在刮臂扫掠带内的水珠被刮净
+  const wiped=(x,y)=>{
+    for(const b of blades){
+      const dx=b.ex-b.bx,dy=b.ey-b.by,ll=Math.hypot(dx,dy)||1;
+      const ux=dx/ll,uy=dy/ll,px=x-b.bx,qy=y-b.by;
+      const al=px*ux+qy*uy;
+      if(al>0&&al<ll&&Math.abs(px*uy-qy*ux)<20)return true;
+    }
+    return false;
+  };
+  const limY=H-210;
+  for(let i=0;i<58;i++){
+    const h1=rnd01(i*13.7+1),h2=rnd01(i*29.1+7),h3=rnd01(i*7.3+3);
+    const x=h1*W;
+    const y=(h2*limY+t*(.6+h3*1.9)*22)%limY;
+    if(wiped(x,y))continue;
+    const r=1.1+h3*2.7,a=.26+h2*.26;
+    // 下滑拖尾水痕
+    ctx.strokeStyle=`rgba(206,224,244,${a*.32})`;
+    ctx.lineWidth=Math.max(.8,r*.5);
+    ctx.beginPath();ctx.moveTo(x,y-r*1.3);ctx.lineTo(x,y+r*4.2);ctx.stroke();
+    // 水珠本体 + 高光
+    ctx.fillStyle=`rgba(212,230,248,${a})`;
+    ctx.beginPath();ctx.ellipse(x,y,r*.72,r,0,0,7);ctx.fill();
+    ctx.fillStyle=`rgba(255,255,255,${a*.85})`;
+    ctx.beginPath();ctx.arc(x-r*.25,y-r*.35,Math.max(.5,r*.27),0,7);ctx.fill();
+  }
+  // 玻璃下沿的水膜
+  const wg=ctx.createLinearGradient(0,limY-46,0,limY);
+  wg.addColorStop(0,'rgba(188,208,230,0)');
+  wg.addColorStop(1,'rgba(188,208,230,.11)');
+  ctx.fillStyle=wg;ctx.fillRect(0,limY-46,W,46);
+  // 雨刷臂
+  ctx.strokeStyle='rgba(12,16,22,.72)';ctx.lineWidth=3;
+  for(const b of blades){
+    ctx.beginPath();ctx.moveTo(b.bx,b.by);ctx.lineTo(b.ex,b.ey);ctx.stroke();
+  }
+}
+function drawRidge(col,baseY,amp,shift,freq){
+  ctx.fillStyle=rgb(mix(col,C.fog,.35));ctx.beginPath();ctx.moveTo(0,HOR+2);
+  for(let x=0;x<=W;x+=24){
+    const t=(x+shift*20)/W*freq*Math.PI;
+    ctx.lineTo(x,baseY-Math.abs(Math.sin(t))*amp-Math.sin(t*2.3)*amp*.25);
+  }
+  ctx.lineTo(W,HOR+2);ctx.closePath();ctx.fill();
+}
+function drawSprite(p,sp){
+  const fogT=p.fog*.85;
+  const y=p.sy,kx=p.kx,ky=p.ky;
+  let off=sp.off,paxAlpha=1;
+  if(sp.type==='pax'){
+    const st=G.stations[sp.paxSt];
+    if(!st||st.status==='closed'||st.status==='departed'||st.status==='skipped')return;
+    if(st.status==='boarding'){
+      // 登乘：向车门方向移动并淡出
+      const el=Math.max(0,G.t-(st.doorOpenT||0));
+      const prog=Math.min(1,el/(DWELL*.85));
+      off-=(off-4.72)*prog;
+      paxAlpha=Math.max(0,1-(prog-.4)/.6);
+    }else{
+      off+=Math.sin(G.t*.55+sp.seed)*.10;   // 站台踱步
+    }
+  }
+  if(paxAlpha<.05)return;
+  const x=p.sx+kx*(sp.side*off);
+  const put=(c,mx,my,mw,mh)=>{ctx.fillStyle=c;
+    ctx.fillRect(x+kx*mx,y-ky*(my+mh),kx*mw,ky*mh);};
+  const circ=(c,mx,my,r)=>{ctx.fillStyle=c;ctx.beginPath();
+    ctx.arc(x+kx*mx,y-ky*my,kx*r,0,7);ctx.fill();};
+  const s=sp.sz;
+  // 落地阴影：太阳在右上方，影子向左铺开；随距离被雾吞没
+  const sa=Math.max(0,.28-fogT*.3)*(sp.type==='pax'?paxAlpha:1);
+  if(sa>.02&&sp.type!=='fence'&&sp.type!=='equip'){
+    let rx=.6*s,ry=.16*s,ox=-.3*s;
+    if(sp.type==='house'){rx=2.0*s;ry=.44*s;ox=-.8*s;}
+    else if(sp.type==='house2'){rx=1.8*s;ry=.42*s;ox=-.7*s;}
+    else if(sp.type==='bld'||sp.type==='bld2'){rx=2.6*s;ry=.55*s;ox=-1.0*s;}
+    else if(sp.type==='pine'){rx=.5*s;ry=.14*s;ox=-.2*s;}
+    else if(sp.type==='bush'){rx=.38*s;ry=.11*s;ox=-.15*s;}
+    else if(sp.type==='pax'){rx=.3*s;ry=.1*s;ox=-.12*s;}
+    ctx.fillStyle=`rgba(8,12,16,${sa})`;
+    ctx.beginPath();ctx.ellipse(x+kx*ox,y,Math.max(.6,kx*rx),Math.max(.4,ky*ry),0,0,7);ctx.fill();
+  }
+  switch(sp.type){
+    case'tree':
+      put(rgb(mix([110,80,50],C.fog,fogT)),-.08*s,0,.16*s,.9*s);
+      circ(rgb(mix([46,110,52],C.fog,fogT)),0,1.15*s,.55*s);
+      circ(rgb(mix([58,128,60],C.fog,fogT)),.22*s,1.4*s,.4*s);break;
+    case'pine':
+      put(rgb(mix([90,66,44],C.fog,fogT)),-.07*s,0,.14*s,.7*s);
+      ctx.fillStyle=rgb(mix([36,92,56],C.fog,fogT));ctx.beginPath();
+      ctx.moveTo(x-kx*.6*s,y-ky*.6*s);ctx.lineTo(x+kx*.6*s,y-ky*.6*s);
+      ctx.lineTo(x,y-ky*2.1*s);ctx.closePath();ctx.fill();break;
+    case'bush':
+      circ(rgb(mix([60,120,58],C.fog,fogT)),0,.25*s,.35*s);break;
+    case'house':{
+      put(rgb(mix([206,196,178],C.fog,fogT)),-1.6*s,0,3.2*s,2.4*s);
+      ctx.fillStyle=rgb(mix([140,70,52],C.fog,fogT));ctx.beginPath();
+      ctx.moveTo(x-kx*1.9*s,y-ky*2.4*s);ctx.lineTo(x+kx*1.9*s,y-ky*2.4*s);
+      ctx.lineTo(x,y-ky*3.6*s);ctx.closePath();ctx.fill();break;}
+    case'house2':
+      put(rgb(mix([188,180,168],C.fog,fogT)),-1.4*s,0,2.8*s,3.2*s);
+      put(rgb(mix([90,96,104],C.fog,fogT)),-1.4*s,3.2*s,2.8*s,.3*s);break;
+    case'bld':case'bld2':{
+      const h=(sp.type==='bld'?9:14)*s,w=4.5*s;
+      put(rgb(mix(sp.type==='bld'?[150,158,168]:[126,134,148],C.fog,fogT)),-w/2,0,w,h);
+      if(p.z<700){ctx.fillStyle=TOD===0?'rgba(255,222,150,.92)':
+        TOD===1?'rgba(255,206,150,.82)':rgb(mix([220,228,120],C.fog,fogT));
+        for(let wy=1;wy<h-1;wy+=1.6)for(let wx=-w/2+.5;wx<w/2-.4;wx+=1.1)
+          if(((wx*wy+sp.seed)%7)<3)ctx.fillRect(x+kx*wx,y-ky*(wy+.8),kx*.5,ky*.7);}
+      break;}
+    case'fence':
+      put(rgb(mix([230,120,30],C.fog,fogT)),-.05,0,.1,1.1);break;
+    case'equip':
+      put(rgb(mix([210,130,40],C.fog,fogT)),-.5,0,1,1);break;
+    case'pax':{
+      const coat=sp.seed%2?[52,66,92]:[96,66,72];
+      if(paxAlpha<1)ctx.globalAlpha=paxAlpha;
+      // 双腿交替摆动（行走感）
+      const sw=Math.sin(G.t*2.2+sp.seed*3.1)*.16*s;
+      const legC=rgb(mix([34,40,52],C.fog,fogT));
+      put(legC,-.18*s+sw,0,.14*s,.56*s);
+      put(legC,.04*s-sw,0,.14*s,.56*s);
+      put(rgb(mix([34,42,58],C.fog,fogT)),-.16*s,.55*s,.32*s,.16*s);
+      put(rgb(mix(coat,C.fog,fogT)),-.22*s,.66*s,.44*s,.72*s);
+      circ(rgb(mix([150,120,105],C.fog,fogT)),0,1.56*s,.17*s);
+      if(paxAlpha<1)ctx.globalAlpha=1;
+      break;}
+  }
+}
+function drawPole(p){
+  const x0=p.sx+p.kx*5.8,y0=p.sy,y1=p.sy-p.ky*5.9;
+  const fogC=rgb(mix([90,94,100],C.fog,p.fog*.9));
+  ctx.strokeStyle=fogC;ctx.lineWidth=Math.max(1,p.kx*.09);
+  ctx.beginPath();ctx.moveTo(x0,y0);ctx.lineTo(x0,y1);
+  ctx.lineTo(p.sx,p.sy-p.ky*5.35);ctx.stroke();
+}
+function drawPortal(p){
+  const y0=p.sy,y1=p.sy-p.ky*6.3;
+  ctx.strokeStyle=rgb(mix([80,86,94],C.fog,p.fog*.9));
+  ctx.lineWidth=Math.max(1,p.kx*.12);
+  ctx.beginPath();
+  ctx.moveTo(p.sx-p.kx*5.9,y0);ctx.lineTo(p.sx-p.kx*5.9,y1);
+  ctx.lineTo(p.sx+p.kx*5.9,y1);ctx.lineTo(p.sx+p.kx*5.9,y0);ctx.stroke();
+}
+function drawSignal(p,sig){
+  const asp=sig._asp;
+  const col=asp==='R'?'#ff2d20':asp==='Y'?'#ffc020':'#2be048';
+  const rgbT=asp==='R'?'255,45,32':asp==='Y'?'255,192,32':'43,224,72';
+  const x=p.sx+p.kx*(sig.dwarf?4.1:5.2);
+  const ly=p.sy-p.ky*(sig.dwarf?1.4:5.6);
+  // 夜间信号灯泛光
+  if(TOD===0){
+    const rr=Math.max(7,p.kx*(sig.dwarf?1.3:1.9));
+    ctx.save();ctx.globalCompositeOperation='lighter';
+    const g=ctx.createRadialGradient(x,ly,0,x,ly,rr);
+    g.addColorStop(0,`rgba(${rgbT},.30)`);
+    g.addColorStop(.35,`rgba(${rgbT},.12)`);
+    g.addColorStop(1,`rgba(${rgbT},0)`);
+    ctx.fillStyle=g;ctx.fillRect(x-rr,ly-rr,rr*2,rr*2);
+    ctx.restore();
+  }
+  if(sig.dwarf){
+    ctx.strokeStyle='#3a3f45';ctx.lineWidth=Math.max(1,p.kx*.07);
+    ctx.beginPath();ctx.moveTo(x,p.sy);ctx.lineTo(x,p.sy-p.ky*1.1);ctx.stroke();
+    ctx.fillStyle='#22262b';ctx.fillRect(x-p.kx*.28,p.sy-p.ky*1.75,p.kx*.56,p.ky*.7);
+    ctx.fillStyle=col;ctx.beginPath();ctx.arc(x,p.sy-p.ky*1.4,Math.max(1.5,p.kx*.14),0,7);ctx.fill();
+  }else{
+    drawPortal(p);
+    ctx.fillStyle='#1c2024';
+    ctx.fillRect(x-p.kx*.3,p.sy-p.ky*6.1,p.kx*.6,p.ky*1);
+    ctx.fillStyle=col;ctx.beginPath();
+    ctx.arc(x,p.sy-p.ky*5.6,Math.max(1.5,p.kx*.15),0,7);ctx.fill();
+    ctx.fillStyle='rgba(255,255,255,.25)';ctx.beginPath();
+    ctx.arc(x-p.kx*.04,p.sy-p.ky*5.66,Math.max(.8,p.kx*.05),0,7);ctx.fill();
+  }
+}
+function drawBoard(p,txt,sub,bg){
+  const x=p.sx+p.kx*4.6;
+  const w=Math.max(4,p.kx*.9),h=Math.max(5,p.ky*.9);
+  ctx.strokeStyle='#3a3f45';ctx.lineWidth=Math.max(1,p.kx*.05);
+  ctx.beginPath();ctx.moveTo(x,p.sy);ctx.lineTo(x,p.sy-p.ky*2.1);ctx.stroke();
+  ctx.fillStyle=bg||'#f4f6f8';
+  ctx.fillRect(x-w/2,p.sy-p.ky*2.1-h/2,w,h);
+  if(p.z<900){
+    ctx.fillStyle='#111';ctx.font=`700 ${Math.max(7,p.kx*.5)}px sans-serif`;
+    ctx.textAlign='center';ctx.textBaseline='middle';
+    ctx.fillText(txt,x,p.sy-p.ky*2.1);
+    if(sub){ctx.font=`${Math.max(6,p.kx*.3)}px sans-serif`;ctx.fillText(sub,x,p.sy-p.ky*1.55);}
+  }
+}
+function drawStopMarker(p,label){
+  const x=p.sx+p.kx*4.2;
+  ctx.strokeStyle='#c8ccd2';ctx.lineWidth=Math.max(1,p.kx*.06);
+  ctx.beginPath();ctx.moveTo(x,p.sy);ctx.lineTo(x,p.sy-p.ky*2.5);ctx.stroke();
+  const w=Math.max(6,p.kx*1),h=Math.max(4,p.ky*.6);
+  ctx.fillStyle='#f8f8f8';ctx.fillRect(x-w/2,p.sy-p.ky*2.7,w,h);
+  ctx.fillStyle='#111';ctx.fillRect(x-w/2,p.sy-p.ky*2.7,w,h*.3);
+  if(p.z<500){ctx.fillStyle='#111';ctx.font=`700 ${Math.max(7,p.kx*.34)}px sans-serif`;
+    ctx.textAlign='center';ctx.textBaseline='middle';
+    ctx.fillText(label,x,p.sy-p.ky*2.42);}
+}
+function render(){
+  const camYAbs=project();
+  // 震动反馈：速度带来的持续颠簸 + 事件冲击
+  const spd=Math.abs(G.v);
+  const rumble=spd>0.5?Math.min(2.2,0.35+spd*0.019):0;
+  const sh=Math.min(18,G.shake+rumble);
+  ctx.save();
+  if(sh>0.2)ctx.translate((Math.random()-.5)*sh,(Math.random()-.5)*sh);
+  drawSky(camYAbs);
+  const inTunnel=zoneAt(G.pos)==='tunnel';
+  const wet=WEATHER[G.weather].rain?1:0;
+  // 远→近
+  for(let n=DRAW_N-1;n>=0;n--){
+    const p1=pts[n],p2=pts[n+1];if(!p2)continue;
+    const s=p1.s;
+    const fogT=p1.fog*.8;
+    // 地面（带随机明暗起伏，避免大片纯色）
+    const baseC=groundColor(s.zone,s.i&1);
+    const dv=(rnd01(s.i)-.5)*.12;
+    const gc=rgb(mix(mix(baseC,dv>0?[250,250,245]:[18,22,20],Math.abs(dv)),C.fog,fogT));
+    ctx.fillStyle=gc;ctx.fillRect(0,p2.sy,W,p1.sy-p2.sy+1);
+    // 雨天湿地：地面整体压暗、泛出冷调水汽
+    if(wet&&!inTunnel){
+      ctx.fillStyle=`rgba(20,30,44,${(1-fogT)*.14})`;
+      ctx.fillRect(0,p2.sy,W,p1.sy-p2.sy+1);
+    }
+    // 道床
+    const bedC=rgb(mix(s.zone==='tunnel'?[64,64,70]:C.bed,C.fog,fogT));
+    quad(p1,p2,-ROAD_HALF,ROAD_HALF,-ROAD_HALF,ROAD_HALF,bedC);
+    // 湿润道床：压暗并带一点天光反射
+    if(wet&&!inTunnel){
+      quad(p1,p2,-ROAD_HALF,ROAD_HALF,-ROAD_HALF,ROAD_HALF,
+        `rgba(26,38,52,${(1-fogT)*.26})`);
+    }
+    // 道砟颗粒（近处）
+    if(p1.z<300&&!s.platform){
+      const br=rnd01(s.i*3.7);
+      ctx.fillStyle=rgb(mix([150,152,158],C.fog,fogT));
+      for(let k=0;k<4;k++){
+        const gx=(rnd01(s.i*5+k)-.5)*7.2;
+        const gyy=p1.sy-(p1.sy-p2.sy)*(.2+.55*rnd01(s.i*7+k));
+        ctx.fillRect(p1.sx+p1.kx*gx,gyy,Math.max(1,p1.kx*.07),Math.max(1,(p1.sy-p2.sy)*.12));
+      }
+    }
+    // 轨道板
+    quad(p1,p2,-2.6,2.6,-2.6,2.6,rgb(mix(s.zone==='tunnel'?[52,52,58]:C.slab,C.fog,fogT)));
+    // 积水：随线路推进随机分布，倒映天光并随时间轻微晃动
+    if(wet&&!inTunnel&&p1.z<1000){
+      const pr=rnd01(s.i*29.3+5);
+      if(pr<.55){
+        const off=(rnd01(s.i*31.7)-.5)*6.6;
+        const a=(.14+.20*rnd01(s.i*37))*(1-fogT*.8)*(.8+.2*Math.sin(G.t*2.4+s.i));
+        const cx=p1.sx+p1.kx*off,cy=p1.sy-(p1.sy-p2.sy)*.45;
+        const rx=Math.max(1.2,p1.kx*(.9+pr*2.2)),ry=Math.max(.7,(p1.sy-p2.sy)*.6);
+        ctx.fillStyle=`rgba(206,223,242,${a})`;
+        ctx.beginPath();ctx.ellipse(cx,cy,rx,ry,0,0,7);ctx.fill();
+        if(pr<.22){
+          ctx.fillStyle=`rgba(244,250,255,${a*.5})`;
+          ctx.beginPath();ctx.ellipse(cx,cy,rx*.5,ry*.42,0,0,7);ctx.fill();
+        }
+      }
+    }
+    // 横向标线（速度感）
+    if((s.i%2===0)&&p1.z<1200){
+      ctx.fillStyle=rgb(mix(C.tieL,C.fog,fogT));
+      const hh=Math.max(1,(p1.sy-p2.sy)*.18);
+      ctx.fillRect(p1.sx-p1.kx*2.4,p1.sy-hh,p1.kx*4.8,hh);
+      // 轨枕阴影
+      if(p1.z<600){
+        ctx.fillStyle=`rgba(0,0,0,${.22-fogT*.2})`;
+        ctx.fillRect(p1.sx-p1.kx*2.4,p1.sy,Math.max(1,p1.kx*4.8),Math.max(1,(p1.sy-p2.sy)*.1));
+      }
+    }
+    // 钢轨
+    const rc=rgb(mix(C.rail,C.fog,fogT*.7));
+    quad(p1,p2,-0.98,-0.78,-0.98,-0.78,rc);
+    quad(p1,p2,0.78,0.98,0.78,0.98,rc);
+    // 钢轨高光（近处闪烁；雨天湿轨反光更强）
+    if(p1.z<700){
+      const ga=Math.max(0,.42-fogT*.42)*(.55+.45*Math.sin(s.i*.9+G.pos*.05))*(wet?1.5:1);
+      ctx.fillStyle=`rgba(230,240,255,${ga})`;
+      [-0.88,0.88].forEach(rx=>{
+        const xA=p1.sx+p1.kx*rx,yA=p1.sy-p1.ky*.09;
+        const xB=p2.sx+p2.kx*rx,yB=p2.sy-p2.ky*.09;
+        ctx.beginPath();ctx.moveTo(xA,yA);ctx.lineTo(xB,yB);
+        ctx.lineTo(xB+Math.max(.5,p2.kx*.06),yB);ctx.lineTo(xA+Math.max(.5,p1.kx*.06),yA);
+        ctx.closePath();ctx.fill();
+      });
+      // 湿轨两侧的漫射反光带（随车速流动）
+      if(wet){
+        const wa=Math.max(0,.11-fogT*.11)*(.65+.35*Math.sin(G.t*2.8+s.i*.7));
+        if(wa>.01){
+          quad(p1,p2,-1.75,-.55,-1.75,-.55,`rgba(196,216,238,${wa})`);
+          quad(p1,p2,.55,1.75,.55,1.75,`rgba(196,216,238,${wa})`);
+        }
+      }
+    }
+    // 站台
+    if(s.platform){
+      quadH(p1,p2,[4.5,7.6],1.25,1.25,rgb(mix([168,170,172],C.fog,fogT)));
+      // 雨棚在站台面上的投影
+      if(s.i%3===0)
+        quadH(p1,p2,[4.6,8.6],1.26,1.26,`rgba(8,12,18,${Math.max(0,.24-fogT*.22)})`);
+      // 铺装缝（纵向）
+      if(s.i%2===0)
+        quadH(p1,p2,[5.98,6.06],1.265,1.265,rgb(mix([136,138,142],C.fog,fogT)));
+      // 铺装缝（横向）
+      if(s.i%2===0){
+        const hh=Math.max(1,(p1.sy-p2.sy)*.06);
+        ctx.fillStyle=rgb(mix([136,138,142],C.fog,fogT));
+        ctx.fillRect(p1.sx+p1.kx*4.6,p1.sy-p1.ky*1.265-hh,p1.kx*3,hh);
+      }
+      // 站台边缘白色警示线
+      quadH(p1,p2,[4.52,4.8],1.268,1.268,rgb(mix([234,236,240],C.fog,fogT)));
+      // 地面黄色限界线
+      quad(p1,p2,4.5,4.62,4.5,4.62,rgb(mix([240,200,40],C.fog,fogT)));
+      ctx.fillStyle=rgb(mix([120,122,126],C.fog,fogT));
+      ctx.beginPath();
+      ctx.moveTo(p1.sx+p1.kx*4.5,p1.sy);ctx.lineTo(p1.sx+p1.kx*4.5,p1.sy-p1.ky*1.25);
+      ctx.lineTo(p2.sx+p2.kx*4.5,p2.sy-p2.ky*1.25);ctx.lineTo(p2.sx+p2.kx*4.5,p2.sy);
+      ctx.closePath();ctx.fill();
+      // 雨棚
+      if(s.i%3===0)quadH(p1,p2,[4.5,8.6],4.6,4.6,rgb(mix([96,110,124],C.fog,fogT)));
+      if(s.i%8===0){
+        ctx.strokeStyle=rgb(mix([120,128,138],C.fog,fogT));
+        ctx.lineWidth=Math.max(1,p1.kx*.08);
+        ctx.beginPath();ctx.moveTo(p1.sx+p1.kx*7.4,p1.sy);
+        ctx.lineTo(p1.sx+p1.kx*7.4,p1.sy-p1.ky*4.6);ctx.stroke();
+        // 夜间站台照明
+        if(TOD===0){
+          const lx=p1.sx+p1.kx*7.4,ly=p1.sy-p1.ky*4.6,rr=Math.max(9,p1.kx*3.2);
+          const lg=ctx.createRadialGradient(lx,ly,0,lx,ly,rr);
+          lg.addColorStop(0,'rgba(255,226,158,.66)');
+          lg.addColorStop(.4,'rgba(255,226,158,.18)');
+          lg.addColorStop(1,'rgba(255,226,158,0)');
+          ctx.fillStyle=lg;ctx.fillRect(lx-rr,ly-rr,rr*2,rr*2);
+          ctx.fillStyle='rgba(255,240,196,.95)';
+          ctx.beginPath();ctx.arc(lx,ly,Math.max(1.5,p1.kx*.08),0,7);ctx.fill();
+        }
+      }
+    }
+    // 接触网
+    if(s.zone!=='tunnel'){
+      if(s.i%2===0)drawPole(p1);
+      if(s.i%10===0)drawPortal(p1);
+    }
+    // 信号机
+    if(s.sigRef&&p1.z>8)drawSignal(p1,s.sigRef);
+    // 限速牌
+    if(s.board&&p1.z>8)drawBoard(p1,String(s.board),'km/h','#f4f6f8');
+    if(s.workBoard&&p1.z>8)drawBoard(p1,'200','施工','#ffd24d');
+    if(s.workEnd&&p1.z>8)drawBoard(p1,'终','解除','#9dff9d');
+    // 停车标
+    if(s.marker&&p1.z>8)drawStopMarker(p1,s.markerName);
+    // 站名牌
+    if(s.stBoard&&p1.z>8)drawBoard(p1,s.stBoard,'','#7fd7ff');
+    // 景物
+    for(const sp of s.sprites)drawSprite(p1,sp);
+    // 隧道口
+    if(s.zone==='tunnel'&&zoneAt(s.pos-SEG_LEN)!=='tunnel'){
+      ctx.fillStyle='#14161c';
+      ctx.beginPath();
+      ctx.moveTo(p1.sx-p1.kx*9,p1.sy);
+      ctx.lineTo(p1.sx-p1.kx*9,p1.sy-p1.ky*8);
+      ctx.lineTo(p1.sx+p1.kx*9,p1.sy-p1.ky*8);
+      ctx.lineTo(p1.sx+p1.kx*9,p1.sy);
+      ctx.closePath();ctx.fill();
+    }
+  }
+  // 接触网导线
+  ctx.strokeStyle='rgba(60,60,66,.8)';ctx.lineWidth=1.2;
+  ctx.beginPath();
+  for(let n=DRAW_N;n>=0;n--){
+    const p=pts[n];if(p.s.zone==='tunnel')continue;
+    const y=p.sy-p.ky*5.35;
+    if(n===DRAW_N)ctx.moveTo(p.sx,y);else ctx.lineTo(p.sx,y);
+  }
+  ctx.stroke();
+  // 尽头线车挡
+  const pE=pts.find(p=>p.s.pos>=EOL_POS-5);
+  if(pE&&pE.z<DRAW_M){
+    ctx.fillStyle='#a01212';
+    ctx.fillRect(pE.sx-pE.kx*1.6,pE.sy-pE.ky*1.6,pE.kx*3.2,pE.ky*1.2);
+    ctx.fillStyle='#f8f8f8';
+    ctx.fillRect(pE.sx-pE.kx*1.6,pE.sy-pE.ky*1.6,pE.kx*3.2,pE.ky*.3);
+  }
+  // 隧道内变暗
+  if(inTunnel){
+    ctx.fillStyle='rgba(6,8,14,.72)';ctx.fillRect(0,0,W,H);
+    // 隧道灯带
+    ctx.fillStyle='rgba(255,220,140,.5)';
+    for(let n=2;n<DRAW_N;n+=4){
+      const p=pts[n];if(p.s.zone!=='tunnel')continue;
+      ctx.beginPath();ctx.arc(p.sx,p.sy-p.ky*4.6,Math.max(1.5,p.kx*.1),0,7);ctx.fill();
+    }
+    // 内壁肋拱
+    for(let n=DRAW_N;n>=2;n--){
+      const p=pts[n];
+      if(p.s.zone!=='tunnel'||p.z>=900||p.s.i%3!==0)continue;
+      ctx.strokeStyle=`rgba(96,104,118,${Math.max(0,.5-p.fog*.4)})`;
+      ctx.lineWidth=Math.max(1,p.kx*.07);
+      ctx.beginPath();
+      ctx.ellipse(p.sx,p.sy,Math.max(2,p.kx*9),Math.max(2,p.ky*8),0,Math.PI,Math.PI*2);
+      ctx.stroke();
+    }
+    // 出口光晕（从暗隧道望向洞口）
+    for(let n=DRAW_N;n>=2;n--){
+      const p=pts[n];if(p.s.zone!=='tunnel')continue;
+      if(zoneAt(p.s.pos+SEG_LEN)!=='tunnel'&&p.z<1200){
+        const rr=Math.max(12,p.kx*10),ey=p.sy-p.ky*3.2;
+        const gr=ctx.createRadialGradient(p.sx,ey,0,p.sx,ey,rr);
+        gr.addColorStop(0,'rgba(255,248,222,.9)');
+        gr.addColorStop(.45,'rgba(255,244,210,.34)');
+        gr.addColorStop(1,'rgba(255,244,210,0)');
+        ctx.fillStyle=gr;ctx.fillRect(p.sx-rr,ey-rr,rr*2,rr*2);
+        break;
+      }
+    }
+  }
+  ctx.restore();
+  drawHeadlight();
+  drawRain();
+  drawWipers();
+  if(CAMS[G.cam].cab)drawCab();
+  // 后处理：轻微色调统一 + 暗角
+  ctx.fillStyle=TOD===0?'rgba(96,138,224,.055)':TOD===1?'rgba(255,190,130,.05)':'rgba(255,232,190,.035)';
+  ctx.fillRect(0,0,W,H);
+  const vg=ctx.createRadialGradient(W*.5,H*.47,Math.min(W,H)*.28,W*.5,H*.52,Math.max(W,H)*.76);
+  vg.addColorStop(0,'rgba(0,0,0,0)');
+  vg.addColorStop(.7,'rgba(0,0,0,.10)');
+  vg.addColorStop(1,'rgba(0,0,0,.44)');
+  ctx.fillStyle=vg;ctx.fillRect(0,0,W,H);
+}
+function drawCab(){
+  const dh=214;
+  // 挡风玻璃内反光（斜向玻璃质感）
+  const rg=ctx.createLinearGradient(W*.10,0,W*.38,H*.55);
+  rg.addColorStop(0,'rgba(255,255,255,0)');
+  rg.addColorStop(.42,TOD===2?'rgba(255,255,255,.05)':TOD===1?'rgba(255,196,150,.05)':'rgba(150,190,255,.045)');
+  rg.addColorStop(1,'rgba(255,255,255,0)');
+  ctx.fillStyle=rg;
+  ctx.beginPath();ctx.moveTo(W*.09,0);ctx.lineTo(W*.36,0);ctx.lineTo(W*.13,H*.58);ctx.closePath();ctx.fill();
+  // 驾驶台
+  const g=ctx.createLinearGradient(0,H-dh,0,H);
+  g.addColorStop(0,'#252d37');g.addColorStop(.12,'#1a2129');g.addColorStop(1,'#0b0f14');
+  ctx.fillStyle=g;
+  ctx.beginPath();
+  ctx.moveTo(0,H);ctx.lineTo(0,H-dh*.55);
+  ctx.quadraticCurveTo(W*.5,H-dh*1.14,W,H-dh*.6);
+  ctx.lineTo(W,H);ctx.closePath();ctx.fill();
+  // 台面散热缝
+  ctx.fillStyle='rgba(6,9,13,.7)';
+  [.055,.15,.855,.95].forEach(f=>ctx.fillRect(W*f,H-dh*.29,W*.032,H*.02));
+  // 台面上沿高光 / 夜间氛围灯
+  ctx.strokeStyle=TOD===0?'rgba(84,190,255,.32)':'rgba(150,180,210,.18)';ctx.lineWidth=2;
+  ctx.beginPath();ctx.moveTo(0,H-dh*.55);
+  ctx.quadraticCurveTo(W*.5,H-dh*1.14,W,H-dh*.6);ctx.stroke();
+  // A柱（倒角渐变）
+  const pg=ctx.createLinearGradient(0,0,W*.06,0);
+  pg.addColorStop(0,'rgba(6,8,12,.96)');pg.addColorStop(.7,'rgba(18,25,33,.9)');
+  pg.addColorStop(1,'rgba(42,54,66,.85)');
+  ctx.fillStyle=pg;
+  ctx.beginPath();ctx.moveTo(0,0);ctx.lineTo(W*.058,0);ctx.lineTo(W*.020,H*.62);ctx.lineTo(0,H*.70);ctx.closePath();ctx.fill();
+  const pg2=ctx.createLinearGradient(W,0,W*.94,0);
+  pg2.addColorStop(0,'rgba(6,8,12,.96)');pg2.addColorStop(.7,'rgba(18,25,33,.9)');
+  pg2.addColorStop(1,'rgba(42,54,66,.85)');
+  ctx.fillStyle=pg2;
+  ctx.beginPath();ctx.moveTo(W,0);ctx.lineTo(W*.942,0);ctx.lineTo(W*.980,H*.62);ctx.lineTo(W,H*.70);ctx.closePath();ctx.fill();
+  // 顶部遮阳板
+  const tg=ctx.createLinearGradient(0,0,0,H*.085);
+  tg.addColorStop(0,'rgba(8,10,13,.95)');tg.addColorStop(.75,'rgba(8,10,13,.45)');tg.addColorStop(1,'rgba(8,10,13,0)');
+  ctx.fillStyle=tg;ctx.fillRect(0,0,W,H*.085);
+  // 夜间司机室阅读灯
+  if(TOD===0){
+    ctx.fillStyle='rgba(18,22,28,.9)';ctx.fillRect(W*.48,H*.010,W*.04,H*.014);
+    ctx.fillStyle='rgba(255,226,168,.85)';ctx.fillRect(W*.49,H*.014,W*.02,H*.006);
+    const lg=ctx.createRadialGradient(W*.5,H*.03,2,W*.5,H*.03,H*.18);
+    lg.addColorStop(0,'rgba(255,214,150,.22)');lg.addColorStop(1,'rgba(255,214,150,0)');
+    ctx.fillStyle=lg;ctx.fillRect(W*.32,0,W*.36,H*.20);
+  }
+}
+
+/* ================= 设备标记 ================= */
+(function markInfra(){
+  const segAt=p=>segs[clamp(Math.round(p/SEG_LEN),0,segs.length-1)];
+  for(const s of SIGS){const sg=segAt(s.pos);sg.sigRef=s;}
+  for(const e of LIMITS){if(e[0]>0){const sg=segAt(e[0]);sg.board=e[1];}}
+  segAt(25800).workBoard=true;segAt(30000).workEnd=true;
+  for(const st of G.stations){
+    segAt(st.pos).marker=true;
+    const nm=st.name.replace('站','');
+    segAt(st.pos).markerName=nm+' 停车位置';
+    const b=segAt(st.pos-190);b.stBoard=st.name;
+    for(let p=st.pos-210;p<=st.pos+210;p+=SEG_LEN){
+      const sg=segAt(p);sg.platform=true;
+      sg.sprites=sg.sprites.filter(sp=>!(sp.off<12&&sp.side>0));
+    }
+    // 站台候车乘客（到站前可见）
+    for(let p=st.pos-170;p<=st.pos+140;p+=SEG_LEN){
+      const sg=segAt(p),r=mulberry32((sg.i+st.idx*131)*57);
+      const n=2+(r()*4|0);
+      for(let k=0;k<n;k++)sg.sprites.push({side:1,off:5.1+r()*2.1,type:'pax',
+        sz:.85+r()*.35,seed:sg.i+k,paxSt:st.idx});
+    }
+  }
+})();
+
+/* ================= 线路剖面图 ================= */
+let profStat=null;
+function profStatic(){
+  profStat=document.createElement('canvas');
+  profStat.width=profCv.width;profStat.height=profCv.height;
+  const c=profStat.getContext('2d'),w=profStat.width,h=profStat.height;
+  c.fillStyle='#0d1319';c.fillRect(0,0,w,h);
+  const X=p=>p/ROUTE_LEN*w;
+  // 限速阶梯
+  c.fillStyle='rgba(70,140,200,.35)';
+  let px=0,pl=LIMITS[0][1];
+  const Y=l=>h-6-(l/380)*(h-14);
+  for(const e of LIMITS){
+    c.fillRect(X(px),Y(pl),X(e[0])-X(px),h-6-Y(pl));
+    px=e[0];pl=e[1];
+  }
+  c.fillRect(X(px),Y(pl),w-X(px),h-6-Y(pl));
+  // 施工区
+  c.fillStyle='rgba(255,180,60,.5)';c.fillRect(X(25800),h-8,X(30000)-X(25800),3);
+  // 隧道/桥
+  c.fillStyle='rgba(150,150,160,.6)';c.fillRect(X(33500),h-5,X(35500)-X(33500),2);
+  c.fillStyle='rgba(90,160,255,.6)';c.fillRect(X(39800),h-5,X(41200)-X(39800),2);
+  // 车站
+  c.fillStyle='#e8f0f6';c.font=`${Math.max(9,h*.24)}px sans-serif`;
+  c.textAlign='center';c.textBaseline='top';
+  for(const st of G.stations){
+    c.fillRect(X(st.pos)-1,2,2,6);
+    c.fillText(st.name.replace('站',''),clamp(X(st.pos),20,w-20),2);
+  }
+}
+function profDraw(){
+  const c=profCtx,w=profCv.width,h=profCv.height;
+  c.clearRect(0,0,w,h);
+  c.drawImage(profStat,0,0);
+  const X=p=>p/ROUTE_LEN*w;
+  // 信号机
+  for(const s of SIGS){
+    if(s.dwarf)continue;
+    c.fillStyle=s._asp==='R'?'#ff2d20':s._asp==='Y'?'#ffc020':'#2be048';
+    c.fillRect(X(s.pos)-1,h*.42,2.5,2.5);
+  }
+  // 本务车
+  c.fillStyle='#fff';
+  c.beginPath();
+  const x=X(G.pos);
+  c.moveTo(x-5,h-4);c.lineTo(x+5,h-4);c.lineTo(x,h-12);c.closePath();c.fill();
+}
+
+/* ================= HUD ================= */
+function fmtT(t){const m=(t/60)|0,s=(t%60)|0;return`${String(m).padStart(2,'0')}:${String(s).padStart(2,'0')}`;}
+function drawSpeedo(){
+  const c=spdCtx,v=Math.abs(G.v)*3.6,lim=limitAt(G.pos);
+  c.clearRect(0,0,220,150);
+  const cx=110,cy=118,r=92;
+  const a0=Math.PI*1.0,a1=Math.PI*2.0;
+  const A=val=>a0+(a1-a0)*(val/400);
+  // 外圈
+  c.lineWidth=10;c.strokeStyle='#1c2630';
+  c.beginPath();c.arc(cx,cy,r,a0,a1);c.stroke();
+  // 限速红区
+  c.strokeStyle='rgba(255,60,40,.55)';
+  c.beginPath();c.arc(cx,cy,r,A(lim),a1);c.stroke();
+  // 速度弧
+  c.lineWidth=10;c.strokeStyle=v>lim+2?'#ff5040':'#35d4ff';
+  c.beginPath();c.arc(cx,cy,r,a0,A(v));c.stroke();
+  // 刻度
+  c.fillStyle='#7d93a8';c.font='10px sans-serif';c.textAlign='center';c.textBaseline='middle';
+  c.lineWidth=1;c.strokeStyle='#3a4c5e';
+  for(let val=0;val<=400;val+=50){
+    const a=A(val);
+    c.beginPath();
+    c.moveTo(cx+Math.cos(a)*(r-12),cy+Math.sin(a)*(r-12));
+    c.lineTo(cx+Math.cos(a)*(r-20),cy+Math.sin(a)*(r-20));c.stroke();
+    c.fillText(val,cx+Math.cos(a)*(r-32),cy+Math.sin(a)*(r-32));
+  }
+  // 指针
+  const a=A(v);
+  c.strokeStyle='#ffd24d';c.lineWidth=3;
+  c.beginPath();c.moveTo(cx,cy);
+  c.lineTo(cx+Math.cos(a)*(r-16),cy+Math.sin(a)*(r-16));c.stroke();
+  c.fillStyle='#ffd24d';c.beginPath();c.arc(cx,cy,4,0,7);c.fill();
+}
+function drawNotch(){
+  const bar=$('notchBar');
+  let html='';
+  for(let p=4;p>=1;p--)html+=`<div class="nseg ${G.notchP>=p?'onP':''}">P${p}</div>`;
+  html+=`<div class="nseg ${G.notchP===0&&G.notchB===0?'onN':''}">N</div>`;
+  for(let b=1;b<=7;b++)html+=`<div class="nseg ${G.notchB>=b?'onB':''}">B${b}</div>`;
+  html+=`<div class="nseg ${G.eb?'onEB':''}">EB</div>`;
+  bar.innerHTML=html;
+}
+function nextSignal(){
+  let best=null;
+  for(const s of SIGS){
+    if(s.pos>G.pos+5&&(!best||s.pos<best.pos))best=s;
+  }
+  return best;
+}
+function updateHUD(){
+  const v=Math.abs(G.v)*3.6,lim=limitAt(G.pos);
+  $('clock').textContent=fmtT(G.t);
+  // 时刻表与作业状态
+  let sched='';
+  const bo=G.stations.find(s=>s.status==='boarding');
+  const cl=G.stations.find(s=>s.status==='closed'&&Math.abs(s.pos-G.pos)<900);
+  if(bo){
+    const left=Math.max(0,DWELL-(G.t-bo.doorOpenT));
+    sched=`${bo.name} 乘降中 · ${left>0?`还需 ${left|0}s`:'可关门（G）'}`;
+  }else if(cl&&!cl.confirmed){
+    sched=`${cl.name} 车门已关 · 请确认发车（Y）`;
+  }else if(cl){
+    const dt=cl.dep-G.t;
+    sched=`${cl.name} 图定发 ${fmtT(cl.dep)}`+(dt>0?` · 剩余 ${dt|0}s`:' · 可发车');
+  }else{
+    const nst=G.stations.find(s=>s.status==='pending'||s.status==='arrived');
+    if(nst){
+      const ref=nst.status==='pending'?nst.arr:nst.dep;
+      const what=nst.status==='pending'?'到':'发';
+      sched=`${nst.name} 图定${what} ${fmtT(ref)}`;
+      const dt=ref-G.t;
+      if(dt>0)sched+=` · 剩余 ${dt|0}s`;
+    }
+  }
+  $('sched').textContent=sched||'—';
+  $('score').textContent=G.score;
+  $('score').style.color=G.score>=85?'#9dff9d':G.score>=60?'#ffd24d':'#ff8a70';
+  $('energy').textContent=`能耗 ${G.energy.toFixed(0)} kWh`;
+  $('rankMini').textContent=`${DIFF[G.diff].name} · ${RANKS[rankIndex(SAVE.xp)].name}`;
+  $('limitVal').textContent=lim;
+  $('spdVal').textContent=v.toFixed(0);
+  // 灯
+  $('lampEB').className='lamp'+(G.eb?' on':'');
+  $('lampATP').className='lamp'+(G.osActive?' on':'');
+  $('lampRev').className='lamp'+(G.rev?' onG':'');
+  $('lampDoor').className='lamp'+(G.doorsOpen?' on':'');
+  // ATP 目标
+  let target=null;
+  for(const r of restrictions()){
+    const d=r.pos-G.pos;
+    if(d>0&&(!target||d<target.d))target={d,txt:r.label,lim:0};
+  }
+  // 降速限速点
+  let nLim=null;
+  for(const e of LIMITS){
+    if(e[0]>G.pos&&e[1]<lim){nLim={d:e[0]-G.pos,lim:e[1]};break;}
+  }
+  if(nLim&&(!target||nLim.d<target.d))target={d:nLim.d,txt:`限速${nLim.lim}`,lim:nLim.lim};
+  const pend=G.stations.find(s=>s.status==='pending');
+  if(pend&&pend.pos>G.pos&&(!target||pend.pos-G.pos<target.d))
+    target={d:pend.pos-G.pos,txt:`${pend.name} 停车`,lim:0};
+  if(target){
+    $('atpTarget').textContent=target.txt;
+    $('atpDist').textContent=target.d>=1000?(target.d/1000).toFixed(2)+' km':target.d.toFixed(0)+' m';
+    const vt=(target.lim||0)/3.6;
+    const need=(G.v*G.v-vt*vt)/(2*Math.max(target.d-5,1));
+    const adv=$('atpAdvice');
+    if(need>0.75&&G.v>1){adv.textContent='立即制动！';adv.className='brake';}
+    else if(need>0.5&&G.v>1){adv.textContent='建议制动';adv.className='advise';}
+    else{adv.textContent='';adv.className='';}
+  }else{
+    $('atpTarget').textContent='—';$('atpDist').textContent='—';
+    $('atpAdvice').textContent='';$('atpAdvice').className='';
+  }
+  // 前方信号
+  const ns=nextSignal();
+  if(ns){
+    const asp=ns._asp;
+    $('atpSigLamp').style.background=asp==='R'?'#ff2d20':asp==='Y'?'#ffc020':'#2be048';
+    $('atpSigTxt').textContent=(asp==='R'?'红灯':asp==='Y'?'黄灯':'绿灯')+
+      ' '+((ns.pos-G.pos)>=1000?((ns.pos-G.pos)/1000).toFixed(1)+'km':((ns.pos-G.pos)|0)+'m');
+  }else{$('atpSigTxt').textContent='—';$('atpSigLamp').style.background='#222';}
+  $('atpNext').textContent=pend?`${pend.name} ${((pend.pos-G.pos)/1000).toFixed(1)}km`:'—';
+  $('atpMode').textContent=G.eb?'EB':'CM';
+  $('atpWx').textContent=`${LOOKS[TOD].name} · ${WEATHER[G.weather].name}`;
+  drawSpeedo();drawNotch();profDraw();
+}
+
+/* ================= 主循环 ================= */
+let lastT=0,acc=0;
+function loop(ts){
+  requestAnimationFrame(loop);
+  const now=ts/1000;
+  const dt=Math.min(now-(lastT||now),0.1);lastT=now;
+  if(G.state==='run'){
+    acc+=dt;
+    while(acc>1/60){physStep(1/60);acc-=1/60;}
+    if(G.finishAt&&G.t>=G.finishAt){G.finishAt=null;finish();}
+    checkDepReady();
+  }
+  G.shake*=Math.exp(-dt*5);
+  updateAudio();
+  if(G.state==='run'||G.state==='pause'){
+    for(const s of SIGS)s._asp=aspectAt(s.pos);
+    render();updateHUD();renderMsgs();
+  }
+}
+
+/* ================= 启动 ================= */
+resize();
+refreshTitleUI();
+requestAnimationFrame(loop);
+</script>
+</body>
+</html>
