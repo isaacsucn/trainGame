@@ -9,7 +9,7 @@
   html,body{margin:0;padding:0;height:100%;overflow:hidden;background:#07090c;
     font-family:"Microsoft YaHei","PingFang SC",system-ui,sans-serif;user-select:none;
     -webkit-user-select:none;color:#e8f0f6}
-  #view{position:absolute;inset:0;display:block}
+  #view{position:absolute;top:0;left:0;right:0;display:block;width:100%;height:100%}
   .hud{position:absolute;text-shadow:0 1px 3px rgba(0,0,0,.7)}
   .panel{background:rgba(8,12,17,.62);border:1px solid rgba(140,180,220,.16);
     border-radius:10px;backdrop-filter:blur(5px);box-shadow:0 2px 10px rgba(0,0,0,.35)}
@@ -550,20 +550,26 @@ function applyCam(){
   FPY=(H*0.5)/Math.tan(c.fovV/2);
 }
 function resize(){
-  W=window.innerWidth;H=window.innerHeight;
+  // 手机端：3D 画面只占 HUD 以上的区域，避免下部轨道被仪表遮挡
+  const mobile=window.innerWidth<=900;
+  const dashH=mobile?Math.round($('dash').getBoundingClientRect().height):0;
+  W=Math.round(window.innerWidth);
+  H=Math.max(220,Math.round(window.innerHeight-dashH));
   // 高 DPI 屏按比例放大画布，保证画面清晰（移动端限制倍率以保流畅）
   const dpr=Math.min(window.devicePixelRatio||1,W>860?2:1.6);
   view.width=Math.round(W*dpr);view.height=Math.round(H*dpr);
+  view.style.height=H+'px';
   ctx.setTransform(dpr,0,0,dpr,0,0);
   CX=W/2;
-  // 驾驶台高度随屏幕高度收缩，避免手机端遮挡过多视野
-  CAB_DH=Math.min(214,Math.max(118,H*0.30));
+  // 驾驶台高度随画面高度收缩，避免遮挡过多视野
+  CAB_DH=mobile?Math.min(150,Math.max(70,H*0.22)):Math.min(214,Math.max(118,H*0.30));
   applyCam();
   const pw=profCv.parentElement.clientWidth-20,ph=profCv.parentElement.clientHeight-12;
   profCv.width=Math.max(200,pw);profCv.height=Math.max(30,ph);
   profStatic();
 }
 window.addEventListener('resize',resize);
+if(window.ResizeObserver)new ResizeObserver(()=>resize()).observe($('dash'));
 
 /* ================= 音频 ================= */
 let AC=null,MASTER=null,ROLL_F=null,ROLL_G=null,BRAKE_G=null,WIND_G=null,HUM_O=null,HUM_G=null,
