@@ -2,7 +2,7 @@
 <html lang="zh-CN">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover">
 <link rel="icon" href="data:,">
 <title>高铁驾驶模拟器 · 云川—海州</title>
 <style>
@@ -132,6 +132,96 @@
   .rbar{height:7px;background:#1a222b;border-radius:4px;overflow:hidden;margin:6px 0}
   .rbar i{display:block;height:100%;background:linear-gradient(90deg,#2b7fbf,#7fd7ff);border-radius:4px}
   .promo{text-align:center;color:#ffd24d;font-weight:800;margin-top:6px;font-size:14px}
+  /* ================= 自适应 / 移动端 ================= */
+  html,body{touch-action:manipulation;-webkit-tap-highlight-color:transparent;overscroll-behavior:none}
+  #dash{padding-bottom:calc(10px + env(safe-area-inset-bottom,0px))}
+  #topbar{top:calc(10px + env(safe-area-inset-top,0px))}
+  @media (max-width: 900px){
+    #topbar{height:auto;flex-wrap:wrap;gap:5px;top:calc(6px + env(safe-area-inset-top,0px));left:6px;right:6px}
+    #profileWrap{display:none}
+    #infoBox{flex:1 1 55%;min-width:0;padding:4px 8px;order:0}
+    #clock{font-size:18px}
+    #sched{font-size:10px;margin-top:1px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+    #scoreBox{flex:0 0 auto;min-width:0;padding:4px 8px;order:1}
+    #score{font-size:18px}
+    #energy,#rankMini{font-size:9px}
+    #viewPanel{flex:1 1 100%;width:auto;padding:3px 6px;order:2}
+    .vhead{display:none}
+    #viewChips{grid-template-columns:repeat(4,1fr);gap:3px}
+    .vchip{font-size:10px;padding:3px 5px;white-space:nowrap}
+    #msg{top:calc(96px + env(safe-area-inset-top,0px));max-width:94vw}
+    .msgItem{font-size:12px;padding:3px 12px;white-space:normal;text-align:center}
+    #dash{height:auto;flex-wrap:wrap;align-items:stretch;padding:0 6px calc(6px + env(safe-area-inset-bottom,0px));gap:6px}
+    #spdPanel{order:1;width:130px;height:122px}
+    #spdCanvas{width:122px;height:84px;left:4px;top:2px}
+    #spdDig{bottom:4px}
+    #spdVal{font-size:24px}
+    #spdUnit{font-size:9px}
+    #limitBadge{font-size:10px;padding:2px 6px;right:6px;top:6px}
+    #atpPanel{order:2;width:auto;flex:1 1 0;min-width:0;height:122px;padding:6px 8px;gap:1px;overflow:hidden}
+    .atpRow{font-size:11px;min-width:0;gap:6px}
+    .atpRow b{font-size:12px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:66%}
+    #atpSigLamp{width:16px;height:16px}
+    #atpAdvice{font-size:12px;min-height:18px;padding:2px}
+    #midPanel{order:3;flex-basis:100%;max-width:none;height:auto;padding:6px 8px;gap:5px}
+    #notchRow{gap:5px}
+    #notchLabel{width:30px;font-size:10px}
+    #notchBar{gap:2px}
+    .nseg{width:19px;height:18px;font-size:10px}
+    #lampRow{gap:5px;flex-wrap:wrap;font-size:9px}
+    .lamp{padding:2px 7px}
+    #btnGrid{grid-template-columns:repeat(5,1fr);gap:4px}
+    .btn{font-size:12px;min-height:46px;padding:5px 0}
+    .btn small{font-size:9px}
+    #ovCard{padding:18px 16px;width:94vw;max-width:94vw}
+    #ovTitle{font-size:20px}
+    #ovSub{font-size:11px}
+    #ovBody{font-size:12px}
+    #ovBody table{font-size:11px;table-layout:fixed}
+    #ovBody td,#ovBody th{padding:3px 5px;word-break:break-word}
+    #ovBody tr>*:nth-child(3){display:none}
+    #ovBody tr>*:nth-child(1){width:42%}
+    #ovBody tr>*:nth-child(2){width:58%}
+    #ovBtn{padding:12px 36px;font-size:15px}
+    #pauseHint{font-size:18px;padding:10px 22px}
+  }
+  @media (max-width: 430px){
+    #spdPanel{width:118px;height:118px}
+    #spdCanvas{width:110px;height:74px;left:4px;top:2px}
+    #spdVal{font-size:22px}
+    #spdDig{bottom:2px}
+    #atpPanel{height:118px;padding:5px 7px}
+    .atpRow{font-size:10px}
+    .atpRow b{font-size:11px}
+    #notchBar{gap:1px}
+    .nseg{width:16px;height:17px;font-size:9px}
+    #notchLabel{width:24px;font-size:9px}
+    .btn{font-size:11px;min-height:44px}
+    .lamp{padding:2px 5px}
+  }
+  @media (max-height: 520px){
+    #topbar{height:auto;flex-wrap:nowrap}
+    #viewPanel{flex:0 0 auto;order:2;width:auto;padding:2px 4px}
+    #viewChips{grid-template-columns:repeat(4,auto);gap:3px}
+    .vchip{padding:2px 6px}
+    #msg{top:70px}
+    #dash{flex-wrap:nowrap;align-items:stretch}
+    #spdPanel{order:1;width:104px;height:104px}
+    #spdCanvas{width:98px;height:66px}
+    #spdVal{font-size:20px}
+    #limitBadge{font-size:9px;right:4px;top:4px;padding:1px 4px}
+    #atpPanel{order:3;flex:0 0 158px;height:104px;padding:4px 6px;gap:0}
+    .atpRow{font-size:10px}
+    .atpRow b{font-size:11px}
+    #atpAdvice{font-size:11px;min-height:16px}
+    #midPanel{order:2;flex:1;height:104px;padding:4px 6px;gap:3px}
+    #lampRow{gap:4px;font-size:8px}
+    #lampRow .lamp:not(.muteBtn){display:none}
+    #notchRow{gap:4px}
+    .nseg{width:16px;height:15px;font-size:9px}
+    .btn{min-height:31px;padding:2px 0;font-size:11px}
+    .btn small{display:none}
+  }
 </style>
 </head>
 <body>
@@ -452,7 +542,7 @@ const $=id=>document.getElementById(id);
 const view=$('view'),ctx=view.getContext('2d');
 const profCv=$('profile'),profCtx=profCv.getContext('2d');
 const spdCv=$('spdCanvas'),spdCtx=spdCv.getContext('2d');
-let W=0,H=0,CX=0,HOR=0,FPX=0,FPY=0;
+let W=0,H=0,CX=0,HOR=0,FPX=0,FPY=0,CAB_DH=214;
 function applyCam(){
   const c=CAMS[G.cam];
   HOR=H*c.hor;
@@ -460,8 +550,14 @@ function applyCam(){
   FPY=(H*0.5)/Math.tan(c.fovV/2);
 }
 function resize(){
-  W=view.width=window.innerWidth;H=view.height=window.innerHeight;
+  W=window.innerWidth;H=window.innerHeight;
+  // 高 DPI 屏按比例放大画布，保证画面清晰（移动端限制倍率以保流畅）
+  const dpr=Math.min(window.devicePixelRatio||1,W>860?2:1.6);
+  view.width=Math.round(W*dpr);view.height=Math.round(H*dpr);
+  ctx.setTransform(dpr,0,0,dpr,0,0);
   CX=W/2;
+  // 驾驶台高度随屏幕高度收缩，避免手机端遮挡过多视野
+  CAB_DH=Math.min(214,Math.max(118,H*0.30));
   applyCam();
   const pw=profCv.parentElement.clientWidth-20,ph=profCv.parentElement.clientHeight-12;
   profCv.width=Math.max(200,pw);profCv.height=Math.max(30,ph);
@@ -1181,7 +1277,7 @@ function drawHeadlight(){
 function drawWipers(){
   if(!WEATHER[G.weather].rain||!CAMS[G.cam].cab)return;
   const t=performance.now()/1000,sw=Math.sin(t*1.35)*.62;
-  const py=H-206,L=H*.5;
+  const py=H-CAB_DH*.96,L=Math.min(H*.5,CAB_DH*1.9);
   const blades=[-1,1].map(d=>{
     const bx=W*(.5+d*.19),ang=-Math.PI/2+d*.3+sw*d*0.8;
     return {bx,by:py,ex:bx+Math.cos(ang)*L,ey:py+Math.sin(ang)*L};
@@ -1196,7 +1292,7 @@ function drawWipers(){
     }
     return false;
   };
-  const limY=H-210;
+  const limY=H-CAB_DH*.98;
   for(let i=0;i<58;i++){
     const h1=rnd01(i*13.7+1),h2=rnd01(i*29.1+7),h3=rnd01(i*7.3+3);
     const x=h1*W;
@@ -1622,7 +1718,7 @@ function render(){
   ctx.fillStyle=vg;ctx.fillRect(0,0,W,H);
 }
 function drawCab(){
-  const dh=214;
+  const dh=CAB_DH;
   // 挡风玻璃内反光（斜向玻璃质感）
   const rg=ctx.createLinearGradient(W*.10,0,W*.38,H*.55);
   rg.addColorStop(0,'rgba(255,255,255,0)');
